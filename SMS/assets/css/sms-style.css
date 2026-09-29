@@ -14,12 +14,13 @@
     --sms-light-hover: #f1f5f9;
     --sms-danger: #dc2626;
     --sms-danger-hover: #b91c1c;
-    --sms-radius-sm: 8px;
-    --sms-radius-md: 12px;
-    --sms-radius-lg: 18px;
+    --sms-radius-sm: 6px;
+    --sms-radius-md: 10px;
+    --sms-radius-lg: 14px;
     --sms-shadow-subtle: 0 1px 3px rgba(0, 0, 0, 0.05);
     --sms-font-family: 'Cairo', system-ui, -apple-system, sans-serif;
-    --sms-field-height: 48px;
+    --sms-field-height: 40px; /* Reduced visual scale */
+    --sms-font-scale: 100%;
 
     /* Pastel Capsules System */
     --sms-pastel-green-bg: #ecfdf5;
@@ -45,6 +46,7 @@ body.sms-standalone-page {
     background-color: var(--sms-bg-body) !important;
     color: var(--sms-text-primary);
     font-family: var(--sms-font-family) !important;
+    font-size: var(--sms-font-scale) !important;
     direction: rtl;
     text-align: right;
     overflow-x: hidden;
@@ -75,74 +77,59 @@ body.sms-standalone-page #page {
     background-color: var(--sms-bg-body);
     direction: rtl;
     box-sizing: border-box;
-    padding: 24px;
+    padding: 16px;
     position: relative;
 }
 
-/* Notification Badge in Sidebar / Mobile Header */
-.sms-notif-badge {
-    position: absolute;
-    top: -4px;
-    right: -4px;
-    background-color: var(--sms-danger);
-    color: #ffffff;
-    font-size: 0.65rem;
-    font-weight: 800;
-    border-radius: 9999px;
-    padding: 2px 6px;
-    line-height: 1;
-}
-
-/* Slide-over Notification Drawer */
-.sms-notif-drawer-backdrop {
+/* Toast In-App Notifications Container */
+#sms-toast-container {
     position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background-color: rgba(0, 0, 0, 0.3);
-    display: none;
-    justify-content: flex-start;
-    z-index: 99999;
-}
-
-.sms-notif-drawer-backdrop.open {
-    display: flex;
-}
-
-.sms-notif-drawer {
-    width: 360px;
-    max-width: 85vw;
-    height: 100vh;
-    background: var(--sms-bg-card);
-    border-left: 1px solid var(--sms-border-color);
-    box-shadow: 5px 0 25px rgba(0,0,0,0.1);
+    bottom: 20px;
+    left: 20px;
+    z-index: 100000;
     display: flex;
     flex-direction: column;
+    gap: 8px;
+    max-width: 320px;
 }
 
-.sms-notif-drawer-header {
-    padding: 16px 20px;
-    border-bottom: 1px solid var(--sms-border-color);
+.sms-toast {
+    background: var(--sms-dark);
+    color: #ffffff;
+    padding: 10px 16px;
+    border-radius: var(--sms-radius-md);
+    font-size: 0.82rem;
+    font-weight: 600;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
     display: flex;
-    justify-content: space-between;
     align-items: center;
+    justify-content: space-between;
+    animation: smsSlideIn 0.3s ease;
 }
 
-/* Fixed Global Right Sidebar Navigation */
+.sms-toast.success { background-color: #064e3b; color: #ecfdf5; border: 1px solid #059669; }
+.sms-toast.error { background-color: #7f1d1d; color: #fef2f2; border: 1px solid #dc2626; }
+.sms-toast.info { background-color: #1e3a8a; color: #eff6ff; border: 1px solid #2563eb; }
+
+@keyframes smsSlideIn {
+    from { transform: translateY(100%); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+}
+
+/* Refined Sidebar Geometry and Outer Margins */
 .sms-sidebar {
     position: fixed;
-    top: 24px;
-    right: 24px;
-    bottom: 24px;
-    width: 260px;
+    top: 16px;
+    right: 16px;
+    bottom: 16px;
+    width: 240px;
     background: var(--sms-bg-card);
     border: 1px solid var(--sms-border-color);
     border-radius: var(--sms-radius-lg);
     display: flex;
     flex-direction: column;
     justify-content: space-between;
-    padding: 20px 16px;
+    padding: 16px 12px;
     box-shadow: var(--sms-shadow-subtle);
     box-sizing: border-box;
     z-index: 100;
@@ -151,49 +138,51 @@ body.sms-standalone-page #page {
 .sms-sidebar-brand {
     display: flex;
     align-items: center;
-    gap: 12px;
-    padding-bottom: 16px;
+    gap: 10px;
+    padding-bottom: 12px;
     border-bottom: 1px solid var(--sms-border-color);
-    margin-bottom: 16px;
+    margin-bottom: 12px;
 }
 
 .sms-brand-icon {
-    width: 38px;
-    height: 38px;
+    width: 34px;
+    height: 34px;
     background-color: var(--sms-dark);
     color: #ffffff;
     border-radius: var(--sms-radius-md);
     display: flex;
     align-items: center;
     justify-content: center;
+    flex-shrink: 0;
 }
 
 .sms-brand-title {
-    font-size: 1.05rem;
+    font-size: 0.95rem;
     font-weight: 800;
     color: var(--sms-text-primary);
     margin: 0;
+    line-height: 1.2;
 }
 
-/* Compact Sidebar Navigation */
+/* Compact Sidebar Navigation Density */
 .sms-nav-list {
     list-style: none;
     padding: 0;
     margin: 0;
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: 2px;
 }
 
 .sms-nav-item a {
     display: flex;
     align-items: center;
-    gap: 10px;
-    padding: 8px 12px;
+    gap: 8px;
+    padding: 6px 10px;
     color: var(--sms-text-secondary);
     text-decoration: none;
-    border-radius: var(--sms-radius-md);
-    font-size: 0.9rem;
+    border-radius: var(--sms-radius-sm);
+    font-size: 0.82rem;
     font-weight: 700;
     transition: all 0.2s ease;
 }
@@ -213,25 +202,26 @@ body.sms-standalone-page #page {
 }
 
 .sms-nav-item svg {
-    width: 18px;
-    height: 18px;
+    width: 16px;
+    height: 16px;
     stroke: var(--sms-text-secondary);
     transition: stroke 0.2s ease;
+    flex-shrink: 0;
 }
 
 /* Sidebar User Profile Footer */
 .sms-sidebar-footer {
     border-top: 1px solid var(--sms-border-color);
-    padding-top: 12px;
-    margin-top: 12px;
+    padding-top: 10px;
+    margin-top: 10px;
 }
 
 .sms-user-profile-card {
     display: flex;
     align-items: center;
-    gap: 10px;
-    padding: 8px;
-    border-radius: var(--sms-radius-md);
+    gap: 8px;
+    padding: 6px;
+    border-radius: var(--sms-radius-sm);
     cursor: pointer;
     transition: background 0.2s ease;
 }
@@ -241,8 +231,8 @@ body.sms-standalone-page #page {
 }
 
 .sms-user-avatar {
-    width: 38px;
-    height: 38px;
+    width: 34px;
+    height: 34px;
     border-radius: 50%;
     background-color: #f1f5f9;
     object-fit: cover;
@@ -251,7 +241,8 @@ body.sms-standalone-page #page {
     justify-content: center;
     font-weight: 800;
     color: var(--sms-dark);
-    font-size: 0.95rem;
+    font-size: 0.85rem;
+    flex-shrink: 0;
 }
 
 .sms-user-info {
@@ -260,7 +251,7 @@ body.sms-standalone-page #page {
 }
 
 .sms-user-name {
-    font-size: 0.85rem;
+    font-size: 0.8rem;
     font-weight: 700;
     color: var(--sms-text-primary);
     white-space: nowrap;
@@ -268,9 +259,12 @@ body.sms-standalone-page #page {
     text-overflow: ellipsis;
 }
 
-.sms-user-role {
-    font-size: 0.75rem;
+.sms-user-job-title {
+    font-size: 0.72rem;
     color: var(--sms-text-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .sms-logout-btn {
@@ -288,62 +282,42 @@ body.sms-standalone-page #page {
 
 /* Open Main Content Area */
 .sms-main-content {
-    margin-right: 284px;
-    width: calc(100% - 284px);
+    margin-right: 256px;
+    width: calc(100% - 256px);
     background: transparent;
     border: none;
     padding: 0;
     box-shadow: none;
     box-sizing: border-box;
-    min-height: calc(100vh - 48px);
+    min-height: calc(100vh - 32px);
 }
 
 .sms-page-header {
     display: flex;
     justify-content: space-between;
-    align-items: center;
-    margin-bottom: 24px;
-    padding-bottom: 12px;
+    align-items: flex-start;
+    margin-bottom: 16px;
+    padding-bottom: 10px;
     border-bottom: 1px solid var(--sms-border-color);
 }
 
 .sms-page-title {
-    font-size: 1.4rem;
+    font-size: 1.25rem;
     font-weight: 800;
-    margin: 0;
+    margin: 0 0 4px 0;
     color: var(--sms-text-primary);
 }
 
-/* Password Toggle Eyeball Styling */
-.sms-password-toggle-wrapper {
-    position: relative;
-    width: 100%;
-}
-
-.sms-password-toggle-btn {
-    position: absolute;
-    left: 14px;
-    top: 50%;
-    transform: translateY(-50%);
-    background: transparent;
-    border: none;
-    cursor: pointer;
-    padding: 4px;
+.sms-section-description {
+    font-size: 0.8rem;
     color: var(--sms-text-muted);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 5;
+    margin: 0;
 }
 
-.sms-password-toggle-btn:hover {
-    color: var(--sms-text-primary);
-}
-
-/* Monochromatic Floating Labels Form Controls */
+/* Compact Monochromatic Form Controls */
 .sms-floating-field {
     position: relative;
-    margin-bottom: 16px;
+    margin-bottom: 12px;
     width: 100%;
 }
 
@@ -352,11 +326,11 @@ body.sms-standalone-page #page {
 .sms-floating-field textarea {
     width: 100%;
     height: var(--sms-field-height);
-    padding: 14px 16px 4px 16px;
+    padding: 12px 14px 2px 14px;
     border: 1px solid var(--sms-border-color);
-    border-radius: var(--sms-radius-md);
+    border-radius: var(--sms-radius-sm);
     background-color: var(--sms-bg-card);
-    font-size: 0.9rem;
+    font-size: 0.82rem;
     color: var(--sms-text-primary);
     outline: none;
     transition: border-color 0.2s ease, box-shadow 0.2s ease;
@@ -365,8 +339,8 @@ body.sms-standalone-page #page {
 
 .sms-floating-field textarea {
     height: auto;
-    min-height: 90px;
-    padding-top: 20px;
+    min-height: 80px;
+    padding-top: 18px;
 }
 
 .sms-floating-field input:focus,
@@ -378,10 +352,10 @@ body.sms-standalone-page #page {
 
 .sms-floating-field label {
     position: absolute;
-    right: 16px;
+    right: 14px;
     top: 50%;
     transform: translateY(-50%);
-    font-size: 0.85rem;
+    font-size: 0.8rem;
     color: var(--sms-text-muted);
     pointer-events: none;
     transition: all 0.2s ease;
@@ -390,7 +364,7 @@ body.sms-standalone-page #page {
 }
 
 .sms-floating-field textarea + label {
-    top: 20px;
+    top: 16px;
     transform: none;
 }
 
@@ -401,23 +375,23 @@ body.sms-standalone-page #page {
 .sms-floating-field select.has-value ~ label,
 .sms-floating-field textarea:focus ~ label,
 .sms-floating-field textarea:not(:placeholder-shown) ~ label {
-    top: 6px;
+    top: 5px;
     transform: translateY(0);
-    font-size: 0.7rem;
+    font-size: 0.65rem;
     font-weight: 700;
     color: var(--sms-text-secondary);
 }
 
-/* Button System - Red for Destructive Actions Exclusively */
+/* Compact Button System */
 .sms-btn {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: 8px;
+    gap: 6px;
     height: var(--sms-field-height);
-    padding: 0 18px;
-    border-radius: var(--sms-radius-md);
-    font-size: 0.9rem;
+    padding: 0 14px;
+    border-radius: var(--sms-radius-sm);
+    font-size: 0.82rem;
     font-weight: 700;
     cursor: pointer;
     border: 1px solid transparent;
@@ -459,27 +433,27 @@ body.sms-standalone-page #page {
     background: var(--sms-bg-card);
     border: 1px solid var(--sms-border-color);
     border-radius: var(--sms-radius-md);
-    padding: 20px;
-    margin-bottom: 20px;
+    padding: 14px;
+    margin-bottom: 14px;
     box-shadow: var(--sms-shadow-subtle);
 }
 
 .sms-user-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-    gap: 16px;
-    margin-top: 16px;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 12px;
+    margin-top: 12px;
 }
 
 .sms-user-card {
     background: var(--sms-bg-card);
     border: 1px solid var(--sms-border-color);
-    border-radius: var(--sms-radius-lg);
-    padding: 20px;
+    border-radius: var(--sms-radius-md);
+    padding: 14px;
     display: flex;
     flex-direction: column;
     justify-content: space-between;
-    gap: 14px;
+    gap: 10px;
     transition: border-color 0.2s ease, box-shadow 0.2s ease;
     box-shadow: var(--sms-shadow-subtle);
 }
@@ -491,52 +465,53 @@ body.sms-standalone-page #page {
 .sms-user-card-header {
     display: flex;
     align-items: center;
-    gap: 14px;
+    gap: 10px;
 }
 
 .sms-user-card-avatar {
-    width: 48px;
-    height: 48px;
+    width: 40px;
+    height: 40px;
     border-radius: 50%;
     background-color: #f1f5f9;
     color: var(--sms-dark);
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 1.1rem;
+    font-size: 0.95rem;
     font-weight: 800;
     border: 1px solid var(--sms-border-color);
+    flex-shrink: 0;
 }
 
 .sms-user-card-body {
-    font-size: 0.85rem;
+    font-size: 0.8rem;
     color: var(--sms-text-secondary);
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: 4px;
 }
 
 .sms-user-card-meta {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    font-size: 0.8rem;
+    font-size: 0.75rem;
     color: var(--sms-text-muted);
 }
 
 .sms-user-card-actions {
     display: flex;
-    gap: 8px;
-    padding-top: 10px;
+    gap: 6px;
+    padding-top: 8px;
     border-top: 1px solid var(--sms-border-color);
 }
 
 /* Enhanced Pastel Color Capsules / Badges */
 .sms-badge {
     display: inline-block;
-    padding: 3px 12px;
+    padding: 2px 10px;
     border-radius: 9999px;
-    font-size: 0.75rem;
+    font-size: 0.72rem;
     font-weight: 700;
     letter-spacing: 0.01em;
 }
@@ -587,8 +562,8 @@ body.sms-standalone-page #page {
     background: var(--sms-bg-card);
     border-radius: var(--sms-radius-lg);
     width: 100%;
-    max-width: 600px;
-    padding: 24px;
+    max-width: 540px;
+    padding: 18px;
     box-shadow: 0 10px 25px rgba(0,0,0,0.1);
     border: 1px solid var(--sms-border-color);
     max-height: 90vh;
@@ -599,13 +574,13 @@ body.sms-standalone-page #page {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding-bottom: 14px;
+    padding-bottom: 10px;
     border-bottom: 1px solid var(--sms-border-color);
-    margin-bottom: 18px;
+    margin-bottom: 14px;
 }
 
 .sms-modal-title {
-    font-size: 1.15rem;
+    font-size: 1.05rem;
     font-weight: 800;
     margin: 0;
 }
@@ -613,7 +588,7 @@ body.sms-standalone-page #page {
 .sms-modal-close {
     background: none;
     border: none;
-    font-size: 1.4rem;
+    font-size: 1.3rem;
     cursor: pointer;
     color: var(--sms-text-muted);
 }
@@ -621,7 +596,7 @@ body.sms-standalone-page #page {
 .sms-grid-2 {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 16px;
+    gap: 12px;
 }
 
 /* Mobile Navigation Bar */
@@ -630,16 +605,16 @@ body.sms-standalone-page #page {
     align-items: center;
     justify-content: space-between;
     background: var(--sms-bg-card);
-    padding: 12px 16px;
+    padding: 10px 14px;
     border: 1px solid var(--sms-border-color);
     border-radius: var(--sms-radius-md);
-    margin-bottom: 16px;
+    margin-bottom: 12px;
 }
 
 /* Mobile Usability & Dynamic Layouts */
 @media (max-width: 992px) {
     .sms-app-wrapper {
-        padding: 12px;
+        padding: 10px;
     }
 
     .sms-mobile-nav-toggle {
@@ -649,9 +624,9 @@ body.sms-standalone-page #page {
     .sms-sidebar {
         position: fixed;
         top: 0;
-        right: -300px;
+        right: -280px;
         bottom: 0;
-        width: 280px;
+        width: 260px;
         border-radius: 0;
         transition: right 0.3s ease;
         box-shadow: -5px 0 25px rgba(0,0,0,0.15);

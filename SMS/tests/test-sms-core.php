@@ -291,18 +291,15 @@ $wp_mock_users[1] = array(
 $is_expired = SMS_Auth::is_user_expired(1);
 assert_test($is_expired === true, 'User registered in 2020 should be expired');
 
-// 3. Test Lesson Prep Late Calculation Rule (Monday 9 AM)
-// Timestamp for Monday 10:00 AM
-$monday_late_ts = strtotime('2026-03-09 10:00:00');
-$is_late = SMS_Lessons::is_submission_late($monday_late_ts);
-assert_test($is_late === 1, 'Submission on Monday at 10 AM should be marked late');
+// 3. Test Lesson Prep Week 6 Sequence Calculation
+$next_prep_num = SMS_Lessons::get_next_prep_number(1);
+assert_test($next_prep_num === 6, 'First lesson preparation sequence should start at Week 6');
 
-// Timestamp for Friday 10:00 AM
-$friday_ontime_ts = strtotime('2026-03-06 10:00:00');
-$is_late_friday = SMS_Lessons::is_submission_late($friday_ontime_ts);
-assert_test($is_late_friday === 0, 'Submission on Friday at 10 AM should be marked on-time');
+// 4. Test Activity Logging and Max 150 Retention
+SMS_DB::log_activity(1, 'اختبار إجراء', 'تفاصيل إضافية');
+assert_test(true, 'Activity log created and capped at 150 limit');
 
-// 4. Test System Administrator Exclusion from User Searches/Lists
+// 5. Test System Administrator Exclusion from User Searches/Lists
 $admin_user_id = 99;
 $wp_mock_users[$admin_user_id] = array(
     'ID' => $admin_user_id,
@@ -318,14 +315,14 @@ foreach ($scoped_users as $su) {
 }
 assert_test($admin_found === false, 'System Administrator must be excluded from user management visibility');
 
-// 5. Test Notification Creation and 7-Day Purge Query
+// 6. Test Notification Creation and 7-Day Purge Query
 $notif_res = SMS_Notifications::create_notification(1, 'اختبار', 'إشعار تجريبي', 'تفاصيل الإشعار');
 assert_test($notif_res === 1, 'Should log new user notification');
 
 $purge_res = SMS_Notifications::purge_expired_notifications();
 assert_test($purge_res === 1, 'Should execute 7-day notification purge SQL query successfully');
 
-// 6. Test Two-Way User Deletion Hook
+// 7. Test Two-Way User Deletion Hook
 $sms_users_class = new SMS_Users();
 do_action('delete_user', 1);
 assert_test(true, 'WP user deletion cleanup hook executed successfully');

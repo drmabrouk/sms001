@@ -1,6 +1,27 @@
 jQuery(document).ready(function ($) {
     'use strict';
 
+    // In-App Toast Confirmation Engine (Replacing browser alert())
+    function showToast(message, type) {
+        type = type || 'info';
+        var $container = $('#sms-toast-container');
+        if ($container.length === 0) {
+            $('body').append('<div id="sms-toast-container"></div>');
+            $container = $('#sms-toast-container');
+        }
+
+        var $toast = $('<div class="sms-toast ' + type + '"><span>' + message + '</span><span class="sms-toast-close" style="cursor:pointer; margin-right:10px;">&times;</span></div>');
+        $container.append($toast);
+
+        $toast.find('.sms-toast-close').on('click', function () {
+            $toast.remove();
+        });
+
+        setTimeout(function () {
+            $toast.fadeOut(400, function () { $(this).remove(); });
+        }, 4000);
+    }
+
     // Mobile Sidebar Toggle
     $('#sms-mobile-toggle-btn').on('click', function () {
         $('#sms-global-sidebar').toggleClass('open');
@@ -25,7 +46,6 @@ jQuery(document).ready(function ($) {
         });
     }
 
-    // Toggle Notification Drawer
     $(document).on('click', '.sms-notif-bell-btn', function () {
         refreshNotifications();
         $notifDrawer.addClass('open');
@@ -35,7 +55,6 @@ jQuery(document).ready(function ($) {
         $notifDrawer.removeClass('open');
     });
 
-    // Mark Single Notification as Read
     $(document).on('click', '.sms-btn-mark-read', function () {
         var notifId = $(this).data('id');
         $.post(sms_vars.ajax_url, {
@@ -49,7 +68,6 @@ jQuery(document).ready(function ($) {
         });
     });
 
-    // Mark All Notifications as Read
     $('#sms-btn-mark-all-read').on('click', function () {
         $.post(sms_vars.ajax_url, {
             action: 'sms_mark_all_read_notifications',
@@ -61,7 +79,7 @@ jQuery(document).ready(function ($) {
         });
     });
 
-    // 60-second Lightweight Notification Unread Count Sync
+    // 60s Lightweight Notification Sync
     setInterval(function () {
         if (document.visibilityState === 'visible') {
             $.post(sms_vars.ajax_url, {
@@ -80,7 +98,7 @@ jQuery(document).ready(function ($) {
         }
     }, 60000);
 
-    // Password Visibility Toggle Eyeball
+    // Password Visibility Toggle
     $(document).on('click', '.sms-password-toggle-btn', function (e) {
         e.preventDefault();
         var targetId = $(this).data('target');
@@ -131,11 +149,236 @@ jQuery(document).ready(function ($) {
             processData: false,
             success: function (res) {
                 if (res.success) {
-                    alert(res.data.message);
-                    location.reload();
+                    showToast(res.data.message, 'success');
+                    setTimeout(function () { location.reload(); }, 1000);
                 } else {
-                    alert(res.data.message || 'حدث خطأ أثناء حفظ الملف الشخصي');
+                    showToast(res.data.message || 'حدث خطأ أثناء حفظ الملف الشخصي', 'error');
                 }
+            }
+        });
+    });
+
+    // Report Creation & Typeahead Teacher Search
+    var teacherSearchTimeout;
+    $('#rep_teacher_search').on('input', function () {
+        clearTimeout(teacherSearchTimeout);
+        var query = $(this).val();
+        if (query.length < 2) {
+            $('#rep_teacher_typeahead_results').hide().empty();
+            return;
+        }
+
+        teacherSearchTimeout = setTimeout(function () {
+            $.post(sms_vars.ajax_url, {
+                action: 'sms_search_teachers',
+                security: sms_vars.nonce,
+                query: query
+            }, function (res) {
+                if (res.success && res.data.results.length > 0) {
+                    var $box = $('#rep_teacher_typeahead_results').empty().show();
+                    $.each(res.data.results, function (i, item) {
+                        var $item = $('<div style="padding:8px 12px; cursor:pointer; font-size:0.85rem; border-bottom:1px solid #eee;">' + item.name + '</div>');
+                        $item.on('click', function () {
+                            $('#rep_teacher_search').val(item.name);
+                            $('#rep_teacher_id').val(item.id);
+                            $box.hide();
+                        });
+                        $box.append($item);
+                    });
+                } else {
+                    $('#rep_teacher_typeahead_results').hide();
+                }
+            });
+        }, 300);
+    });
+
+    var $modalReport = $('#sms-modal-report');
+    $('#sms-btn-create-report').on('click', function () {
+        $('#sms-form-create-report')[0].reset();
+        $('#rep_teacher_id').val('0');
+        $modalReport.addClass('open');
+    });
+
+    $('#sms-modal-report-close').on('click', function () {
+        $modalReport.removeClass('open');
+    });
+
+    $('#sms-form-create-report').on('submit', function (e) {
+        e.preventDefault();
+        var formData = $(this).serialize() + '&action=sms_create_report&security=' + sms_vars.nonce;
+
+        $.post(sms_vars.ajax_url, formData, function (res) {
+            if (res.success) {
+                showToast(res.data.message, 'success');
+                setTimeout(function () { location.reload(); }, 1000);
+            } else {
+                showToast(res.data.message || 'حدث خطأ أثناء إنشاء التقرير', 'error');
+            }
+        });
+    });
+
+    // Print Report
+    $(document).on('click', '.sms-btn-print-report', function () {
+        var rep = $(this).data('rep');
+        $('#print_doc_inst_name').text('المؤسسة: ' + rep.institution_name);
+        $('#print_rep_teacher_name').text(rep.teacher_name);
+        $('#print_rep_lesson_title').text(rep.lesson_title);
+        $('#print_rep_attendance').text(rep.attendance_status === 'present' ? 'حاضر' : 'غائب');
+        $('#print_rep_rating').text(rep.rating + ' / 5');
+        $('#print_rep_date').text(rep.created_at);
+        $('#print_rep_notes').text(rep.notes ? rep.notes : 'لا توجد ملاحظات إضافية.');
+
+        var printContents = $('#sms-printable-report-area').html();
+        var printWindow = window.open('', '', 'height=600,width=800');
+        printWindow.document.write('<html><head><title>طباعة التقرير</title></head><body dir="rtl">');
+        printWindow.document.write(printContents);
+        printWindow.document.write('</body></html>');
+        printWindow.document.close();
+        printWindow.print();
+    });
+
+    // Submit Semester Plan via AJAX
+    var $modalSubmitPlan = $('#sms-modal-submit-plan');
+    $('#sms-btn-submit-plan').on('click', function () {
+        $('#sms-form-submit-plan')[0].reset();
+        $modalSubmitPlan.addClass('open');
+    });
+
+    $('#sms-modal-submit-plan-close').on('click', function () {
+        $modalSubmitPlan.removeClass('open');
+    });
+
+    $('#sms-form-submit-plan').on('submit', function (e) {
+        e.preventDefault();
+        var formData = new FormData(this);
+        formData.append('action', 'sms_submit_semester_plan');
+        formData.append('security', sms_vars.nonce);
+
+        $.ajax({
+            url: sms_vars.ajax_url,
+            type: 'POST',
+            data: formData,
+            contentType: false,
+            processData: false,
+            success: function (res) {
+                if (res.success) {
+                    showToast(res.data.message, 'success');
+                    setTimeout(function () { location.reload(); }, 1000);
+                } else {
+                    showToast(res.data.message || 'حدث خطأ أثناء إرسال الخطة الفصلية', 'error');
+                }
+            }
+        });
+    });
+
+    // Save Document Information
+    $('#sms-form-doc-info').on('submit', function (e) {
+        e.preventDefault();
+        var formData = $(this).serialize() + '&action=sms_save_doc_info&security=' + sms_vars.nonce;
+        $.post(sms_vars.ajax_url, formData, function (res) {
+            if (res.success) {
+                showToast(res.data.message, 'success');
+            } else {
+                showToast(res.data.message, 'error');
+            }
+        });
+    });
+
+    // Save Typography Font Scale
+    $('#sms-form-typography').on('submit', function (e) {
+        e.preventDefault();
+        var formData = $(this).serialize() + '&action=sms_save_typography&security=' + sms_vars.nonce;
+        $.post(sms_vars.ajax_url, formData, function (res) {
+            if (res.success) {
+                showToast(res.data.message, 'success');
+                setTimeout(function () { location.reload(); }, 1000);
+            } else {
+                showToast(res.data.message, 'error');
+            }
+        });
+    });
+
+    // Backup Download
+    $('#sms-btn-download-backup').on('click', function () {
+        $.post(sms_vars.ajax_url, {
+            action: 'sms_download_backup',
+            security: sms_vars.nonce
+        }, function (res) {
+            if (res.success) {
+                var blob = new Blob([res.data.json], { type: 'application/json' });
+                var link = document.createElement('a');
+                link.href = window.URL.createObjectURL(blob);
+                link.download = 'sms_backup_' + new Date().toISOString().slice(0,10) + '.json';
+                link.click();
+                showToast('تم إعداد وتحميل النسخة الاحتياطية', 'success');
+            }
+        });
+    });
+
+    // Restore Backup
+    $('#sms-form-restore-backup').on('submit', function (e) {
+        e.preventDefault();
+        var formData = new FormData(this);
+        formData.append('action', 'sms_restore_backup');
+        formData.append('security', sms_vars.nonce);
+
+        $.ajax({
+            url: sms_vars.ajax_url,
+            type: 'POST',
+            data: formData,
+            contentType: false,
+            processData: false,
+            success: function (res) {
+                if (res.success) {
+                    showToast(res.data.message, 'success');
+                    setTimeout(function () { location.reload(); }, 1000);
+                } else {
+                    showToast(res.data.message, 'error');
+                }
+            }
+        });
+    });
+
+    // Data Purge
+    $('#sms-btn-purge-data').on('click', function () {
+        if (!confirm('تأكيد هام جداً: هل أنت متأكد من رغبتك في حذف كافة بيانات النظام والمؤسسات؟ لا يمكن التراجع عن هذه الخطوة.')) return;
+
+        $.post(sms_vars.ajax_url, {
+            action: 'sms_purge_data',
+            security: sms_vars.nonce
+        }, function (res) {
+            if (res.success) {
+                showToast(res.data.message, 'success');
+                setTimeout(function () { location.reload(); }, 1000);
+            }
+        });
+    });
+
+    // Delete & Recover Activity Logs
+    $(document).on('click', '.sms-btn-delete-activity', function () {
+        var id = $(this).data('id');
+        $.post(sms_vars.ajax_url, {
+            action: 'sms_delete_activity',
+            security: sms_vars.nonce,
+            id: id
+        }, function (res) {
+            if (res.success) {
+                showToast(res.data.message, 'success');
+                setTimeout(function () { location.reload(); }, 1000);
+            }
+        });
+    });
+
+    $(document).on('click', '.sms-btn-recover-activity', function () {
+        var id = $(this).data('id');
+        $.post(sms_vars.ajax_url, {
+            action: 'sms_recover_activity',
+            security: sms_vars.nonce,
+            id: id
+        }, function (res) {
+            if (res.success) {
+                showToast(res.data.message, 'success');
+                setTimeout(function () { location.reload(); }, 1000);
             }
         });
     });
@@ -165,10 +408,10 @@ jQuery(document).ready(function ($) {
             processData: false,
             success: function (res) {
                 if (res.success) {
-                    alert(res.data.message);
-                    location.reload();
+                    showToast(res.data.message, 'success');
+                    setTimeout(function () { location.reload(); }, 1000);
                 } else {
-                    alert(res.data.message || 'حدث خطأ أثناء إرسال التحضير');
+                    showToast(res.data.message || 'حدث خطأ أثناء إرسال التحضير', 'error');
                 }
             }
         });
@@ -186,10 +429,10 @@ jQuery(document).ready(function ($) {
             status: status
         }, function (res) {
             if (res.success) {
-                alert(res.data.message);
-                location.reload();
+                showToast(res.data.message, 'success');
+                setTimeout(function () { location.reload(); }, 1000);
             } else {
-                alert(res.data.message || 'حدث خطأ أثناء المراجعة');
+                showToast(res.data.message || 'حدث خطأ أثناء المراجعة', 'error');
             }
         });
     });
@@ -221,6 +464,19 @@ jQuery(document).ready(function ($) {
 
     $(document).on('change', '#sms-prep-filter-status, #sms-prep-filter-institution', function () {
         fetchFilteredPreps();
+    });
+
+    // Dynamic Institution Search
+    $(document).on('input', '#sms-inst-search-input', function () {
+        var val = $(this).val().toLowerCase();
+        $('.sms-inst-card').each(function () {
+            var text = $(this).data('name').toLowerCase();
+            if (text.indexOf(val) !== -1) {
+                $(this).show();
+            } else {
+                $(this).hide();
+            }
+        });
     });
 
     // Dynamic User Search, Filter and Sorting
@@ -293,10 +549,10 @@ jQuery(document).ready(function ($) {
 
         $.post(sms_vars.ajax_url, formData, function (res) {
             if (res.success) {
-                alert(res.data.message);
-                location.reload();
+                showToast(res.data.message, 'success');
+                setTimeout(function () { location.reload(); }, 1000);
             } else {
-                alert(res.data.message || 'حدث خطأ أثناء حفظ المستخدم');
+                showToast(res.data.message || 'حدث خطأ أثناء حفظ المستخدم', 'error');
             }
         });
     });
@@ -326,10 +582,10 @@ jQuery(document).ready(function ($) {
             processData: false,
             success: function (res) {
                 if (res.success) {
-                    alert(res.data.message);
-                    location.reload();
+                    showToast(res.data.message, 'success');
+                    setTimeout(function () { location.reload(); }, 1000);
                 } else {
-                    alert(res.data.message || 'حدث خطأ أثناء الاستيراد الجماعي للمستخدمين');
+                    showToast(res.data.message || 'حدث خطأ أثناء الاستيراد الجماعي للمستخدمين', 'error');
                 }
             }
         });
@@ -337,7 +593,7 @@ jQuery(document).ready(function ($) {
 
     // Student Modal Lifecycle
     var $modalStudent = $('#sms-modal-student');
-    $('#sms-btn-add-student').on('click', function () {
+    $('#sms-btn-add-student, #sms-btn-add-student-affairs').on('click', function () {
         $('#sms-form-student')[0].reset();
         $('#st_id').val('0');
         $('#sms-modal-student-title').text('إضافة طالب جديد');
@@ -376,12 +632,23 @@ jQuery(document).ready(function ($) {
 
         $.post(sms_vars.ajax_url, formData, function (res) {
             if (res.success) {
-                alert(res.data.message);
-                location.reload();
+                showToast(res.data.message, 'success');
+                setTimeout(function () { location.reload(); }, 1000);
             } else {
-                alert(res.data.message || 'حدث خطأ أثناء حفظ بيانات الطالب');
+                showToast(res.data.message || 'حدث خطأ أثناء حفظ بيانات الطالب', 'error');
             }
         });
+    });
+
+    // Student Affairs CSV Import Modal
+    var $modalImportStudentsExcel = $('#sms-modal-import-students-excel');
+    $('#sms-btn-import-students-excel').on('click', function () {
+        $('#sms-form-import-students-excel')[0].reset();
+        $modalImportStudentsExcel.addClass('open');
+    });
+
+    $('#sms-modal-import-students-excel-close').on('click', function () {
+        $modalImportStudentsExcel.removeClass('open');
     });
 
     // Institutions Modal Lifecycle
@@ -436,10 +703,10 @@ jQuery(document).ready(function ($) {
             processData: false,
             success: function (res) {
                 if (res.success) {
-                    alert(res.data.message);
-                    location.reload();
+                    showToast(res.data.message, 'success');
+                    setTimeout(function () { location.reload(); }, 1000);
                 } else {
-                    alert(res.data.message || 'حدث خطأ أثناء استيراد البيانات');
+                    showToast(res.data.message || 'حدث خطأ أثناء استيراد البيانات', 'error');
                 }
             }
         });
@@ -452,10 +719,10 @@ jQuery(document).ready(function ($) {
 
         $.post(sms_vars.ajax_url, formData, function (res) {
             if (res.success) {
-                alert(res.data.message);
-                location.reload();
+                showToast(res.data.message, 'success');
+                setTimeout(function () { location.reload(); }, 1000);
             } else {
-                alert(res.data.message || 'حدث خطأ أثناء حفظ المؤسسة');
+                showToast(res.data.message || 'حدث خطأ أثناء حفظ المؤسسة', 'error');
             }
         });
     });
@@ -471,10 +738,10 @@ jQuery(document).ready(function ($) {
             id: id
         }, function (res) {
             if (res.success) {
-                alert(res.data.message);
-                location.reload();
+                showToast(res.data.message, 'success');
+                setTimeout(function () { location.reload(); }, 1000);
             } else {
-                alert(res.data.message || 'حدث خطأ أثناء حذف المؤسسة');
+                showToast(res.data.message || 'حدث خطأ أثناء حذف المؤسسة', 'error');
             }
         });
     });
@@ -496,10 +763,10 @@ jQuery(document).ready(function ($) {
             status: status
         }, function (res) {
             if (res.success) {
-                alert(res.data.message);
-                location.reload();
+                showToast(res.data.message, 'success');
+                setTimeout(function () { location.reload(); }, 1000);
             } else {
-                alert(res.data.message || 'حدث خطأ أثناء تعديل حالة المستخدم');
+                showToast(res.data.message || 'حدث خطأ أثناء تعديل حالة المستخدم', 'error');
             }
         });
     });

@@ -8,7 +8,12 @@ class SMS_Lessons {
         global $wpdb;
         $table = $wpdb->prefix . 'sms_lesson_preparations';
         $max = $wpdb->get_var($wpdb->prepare("SELECT MAX(prep_number) FROM $table WHERE teacher_id = %d", $teacher_id));
-        return $max ? (intval($max) + 1) : 1;
+
+        // Preparation sequence starts from Week 6 (5 weeks already passed)
+        if (!$max || intval($max) < 5) {
+            return 6;
+        }
+        return intval($max) + 1;
     }
 
     public static function is_submission_late($now_timestamp = null) {
@@ -19,7 +24,6 @@ class SMS_Lessons {
         $hour = intval(date('H', $now_timestamp));
 
         // Window opens Friday 00:00. On-time deadline is Monday 09:00 AM.
-        // If today is Monday (1) and hour >= 9, or Tuesday(2), Wednesday(3), Thursday(4), it's late.
         if ($day_of_week == 1 && $hour >= 9) {
             return 1;
         } elseif ($day_of_week > 1 && $day_of_week < 5) {
@@ -143,5 +147,60 @@ class SMS_Lessons {
             'reviewer_id'   => intval($reviewer_id),
             'reviewed_at'   => current_time('mysql')
         ), array('id' => intval($prep_id)));
+    }
+
+    // Semester Plans Engine
+    public static function submit_semester_plan($teacher_id, $semester, $plan_title, $file) {
+        global $wpdb;
+        $table = $wpdb->prefix . 'sms_semester_plans';
+
+        // Limit rule: Max 3 semester plans (Term 1, Term 2, Term 3)
+        $valid_semesters = array('الفصل الأول', 'الفصل الثاني', 'الفصل الثالث');
+        if (!in_array($semester, $valid_semesters)) {
+            return new WP_Error('invalid_semester', 'الفصل الدراسي المختار غير صحيح.');
+        }
+
+        $existing = $wpdb->get_var($wpdb->prepare("SELECT id FROM $table WHERE teacher_id = %d AND semester = %s", $teacher_id, $semester));
+        if ($existing) {
+            return new WP_Error('already_submitted', "لقد تمت إضافة الخطة الفصلية لـ ($semester) سابقة بالفعل ولا يمكن التكرار.");
+        }
+
+        if (empty($file) || empty($file['tmp_name'])) {
+            return new WP_Error('empty_file', 'يرجى اختيار ملف الخطة الفصلية (PDF).');
+        }
+
+        require_once(ABSPATH . 'wp-admin/includes/file.php');
+        $movefile = wp_handle_upload($file, array('test_form' => false));
+        if (!$movefile || isset($movefile['error'])) {
+            return new WP_Error('upload_error', 'حدث خطأ أثناء رفع الملف.');
+        }
+
+        $inst_ids = SMS_Users::get_user_institutions($teacher_id);
+        $institution_id = !empty($inst_ids) ? $inst_ids[0] : 0;
+
+        $wpdb->insert($table, array(
+            'teacher_id'     => $teacher_id,
+            'institution_id' => $institution_id,
+            'semester'       => sanitize_text_field($semester),
+            'plan_title'     => sanitize_text_field($plan_title),
+            'file_url'       => esc_url_raw($movefile['url']),
+            'file_path'      => sanitize_text_field($movefile['file']),
+            'submission_time'=> current_time('mysql'),
+            'review_status'  => 'pending'
+        ));
+
+        return $wpdb->insert_id;
+    }
+
+    public static function get_teacher_plans($teacher_id) {
+        global $wpdb;
+        $table = $wpdb->prefix . 'sms_semester_plans';
+        return $wpdb->get_results($wpdb->prepare("SELECT * FROM $table WHERE teacher_id = %d ORDER BY created_at DESC", $teacher_id), ARRAY_A);
+    }
+
+    public static function get_reviewer_plans($user_id) {
+        global $wpdb;
+        $table = $wpdb->prefix . 'sms_semester_plans';
+        return $wpdb->get_results("SELECT * FROM $table ORDER BY created_at DESC", ARRAY_A);
     }
 }

@@ -10,42 +10,49 @@ $roles = (array) $current_user->roles;
 $role_names = SMS_Roles::get_roles_config();
 $primary_role_key = !empty($roles) ? $roles[0] : '';
 $primary_role_label = isset($role_names[$primary_role_key]) ? $role_names[$primary_role_key]['name'] : 'مستخدم';
+$job_title = get_user_meta($current_user->ID, 'sms_job_position', true);
 $unread_count = SMS_Notifications::get_unread_count($current_user->ID);
 ?>
 <div class="sms-app-wrapper">
+    <!-- Toast Notifications Container -->
+    <div id="sms-toast-container"></div>
+
     <!-- Mobile Top Header Bar -->
     <div class="sms-mobile-nav-toggle">
         <div style="display: flex; align-items: center; gap: 8px;">
-            <div class="sms-brand-icon" style="width:30px; height:30px;">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg>
+            <div class="sms-brand-icon" style="width:28px; height:28px;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg>
             </div>
-            <strong style="font-size: 0.95rem;">نظام إدارة الرياضة</strong>
+            <strong style="font-size: 0.88rem;">نظام الإدارة الرياضية</strong>
         </div>
-        <div style="display:flex; gap:8px; align-items:center;">
-            <button type="button" class="sms-btn sms-btn-outline sms-notif-bell-btn" style="height:36px; padding:0 10px; position:relative;">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+        <div style="display:flex; gap:6px; align-items:center;">
+            <button type="button" class="sms-btn sms-btn-outline sms-notif-bell-btn" style="height:32px; padding:0 8px; position:relative;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
                 <span class="sms-notif-badge" style="<?php echo $unread_count > 0 ? '' : 'display:none;'; ?>"><?php echo esc_html($unread_count); ?></span>
             </button>
-            <button type="button" class="sms-btn sms-btn-outline" id="sms-mobile-toggle-btn" style="height:36px; padding:0 12px; font-size:0.8rem;">
+            <button type="button" class="sms-btn sms-btn-outline" id="sms-mobile-toggle-btn" style="height:32px; padding:0 10px; font-size:0.78rem;">
                 القائمة ☰
             </button>
         </div>
     </div>
 
-    <!-- Fixed Right Sidebar Navigation -->
+    <!-- Fixed Global Right Sidebar Navigation -->
     <aside class="sms-sidebar" id="sms-global-sidebar">
         <div>
-            <div class="sms-sidebar-brand" style="justify-content: space-between;">
-                <div style="display:flex; align-items:center; gap:12px;">
-                    <div class="sms-brand-icon">
-                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg>
+            <div class="sms-sidebar-brand" style="flex-direction:column; align-items:flex-start; gap:8px;">
+                <div style="display:flex; align-items:center; justify-content:space-between; width:100%;">
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <div class="sms-brand-icon">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg>
+                        </div>
+                        <h1 class="sms-brand-title">نظام الإدارة الرياضية</h1>
                     </div>
-                    <h1 class="sms-brand-title">نظام إدارة الرياضة</h1>
+                    <button type="button" class="sms-logout-btn sms-notif-bell-btn" title="الإشعارات" style="position:relative;">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+                        <span class="sms-notif-badge" style="<?php echo $unread_count > 0 ? '' : 'display:none;'; ?>"><?php echo esc_html($unread_count); ?></span>
+                    </button>
                 </div>
-                <button type="button" class="sms-logout-btn sms-notif-bell-btn" title="الإشعارات" style="position:relative;">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
-                    <span class="sms-notif-badge" style="<?php echo $unread_count > 0 ? '' : 'display:none;'; ?>"><?php echo esc_html($unread_count); ?></span>
-                </button>
+                <div style="font-size:0.72rem; color:var(--sms-text-muted); line-height:1.2; padding-right:2px;">المنصة المركزية الشاملة للإدارة الرياضية بالمؤسسات التعليمية</div>
             </div>
 
             <nav class="sms-sidebar-nav">
@@ -86,6 +93,18 @@ $unread_count = SMS_Notifications::get_unread_count($current_user->ID);
                             <span>إدارة مستخدمي النظام</span>
                         </a>
                     </li>
+                    <li class="sms-nav-item <?php echo $current_tab === 'student_affairs' ? 'active' : ''; ?>">
+                        <a href="?tab=student_affairs">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>
+                            <span>إدارة شؤون الطلاب</span>
+                        </a>
+                    </li>
+                    <li class="sms-nav-item <?php echo $current_tab === 'tournaments' ? 'active' : ''; ?>">
+                        <a href="?tab=tournaments">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2z"/></svg>
+                            <span>إدارة البطولات</span>
+                        </a>
+                    </li>
                     <li class="sms-nav-item <?php echo $current_tab === 'settings' ? 'active' : ''; ?>">
                         <a href="?tab=settings">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
@@ -104,10 +123,10 @@ $unread_count = SMS_Notifications::get_unread_count($current_user->ID);
                 </div>
                 <div class="sms-user-info">
                     <div class="sms-user-name"><?php echo esc_html($display_name); ?></div>
-                    <div class="sms-user-role"><?php echo esc_html($primary_role_label); ?></div>
+                    <div class="sms-user-job-title"><?php echo esc_html($job_title ? $job_title : $primary_role_label); ?></div>
                 </div>
                 <a href="<?php echo esc_url(wp_logout_url(home_url())); ?>" class="sms-logout-btn" title="تسجيل الخروج">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
                 </a>
             </div>
         </div>
@@ -117,10 +136,10 @@ $unread_count = SMS_Notifications::get_unread_count($current_user->ID);
     <div class="sms-notif-drawer-backdrop" id="sms-notif-drawer-backdrop">
         <div class="sms-notif-drawer">
             <div class="sms-notif-drawer-header">
-                <h3 style="margin:0; font-size:1.1rem; font-weight:800;">مركز الإشعارات</h3>
-                <div style="display:flex; gap:10px; align-items:center;">
-                    <button type="button" id="sms-btn-mark-all-read" style="background:none; border:none; color:var(--sms-text-secondary); font-size:0.8rem; cursor:pointer; font-weight:700;">تحديد الكل كمقروء</button>
-                    <button type="button" id="sms-notif-drawer-close" style="background:none; border:none; font-size:1.4rem; cursor:pointer; color:var(--sms-text-muted);">&times;</button>
+                <h3 style="margin:0; font-size:1.05rem; font-weight:800;">مركز الإشعارات</h3>
+                <div style="display:flex; gap:8px; align-items:center;">
+                    <button type="button" id="sms-btn-mark-all-read" style="background:none; border:none; color:var(--sms-text-secondary); font-size:0.75rem; cursor:pointer; font-weight:700;">تحديد الكل كمقروء</button>
+                    <button type="button" id="sms-notif-drawer-close" style="background:none; border:none; font-size:1.3rem; cursor:pointer; color:var(--sms-text-muted);">&times;</button>
                 </div>
             </div>
             <div id="sms-notif-list-container" style="overflow-y:auto; flex:1;">
@@ -134,17 +153,25 @@ $unread_count = SMS_Notifications::get_unread_count($current_user->ID);
         <?php
         switch ($current_tab) {
             case 'reports':
+                include SMS_PLUGIN_DIR . 'templates/parts/tab-reports.php';
+                break;
             case 'lessons':
                 include SMS_PLUGIN_DIR . 'templates/parts/tab-lessons.php';
                 break;
             case 'plans':
-                include SMS_PLUGIN_DIR . 'templates/parts/tab-placeholder.php';
+                include SMS_PLUGIN_DIR . 'templates/parts/tab-plans.php';
                 break;
             case 'institutions':
                 include SMS_PLUGIN_DIR . 'templates/parts/tab-institutions.php';
                 break;
             case 'users':
                 include SMS_PLUGIN_DIR . 'templates/parts/tab-users.php';
+                break;
+            case 'student_affairs':
+                include SMS_PLUGIN_DIR . 'templates/parts/tab-student-affairs.php';
+                break;
+            case 'tournaments':
+                include SMS_PLUGIN_DIR . 'templates/parts/tab-tournaments.php';
                 break;
             case 'profile':
                 include SMS_PLUGIN_DIR . 'templates/parts/tab-profile.php';

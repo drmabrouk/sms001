@@ -20,6 +20,211 @@ class SMS_AJAX {
         add_action('wp_ajax_sms_fetch_notifications', array($this, 'fetch_notifications'));
         add_action('wp_ajax_sms_mark_read_notification', array($this, 'mark_read_notification'));
         add_action('wp_ajax_sms_mark_all_read_notifications', array($this, 'mark_all_read_notifications'));
+        add_action('wp_ajax_sms_submit_semester_plan', array($this, 'submit_semester_plan'));
+        add_action('wp_ajax_sms_search_teachers', array($this, 'search_teachers'));
+        add_action('wp_ajax_sms_create_report', array($this, 'create_report'));
+        add_action('wp_ajax_sms_save_doc_info', array($this, 'save_doc_info'));
+        add_action('wp_ajax_sms_save_typography', array($this, 'save_typography'));
+        add_action('wp_ajax_sms_download_backup', array($this, 'download_backup'));
+        add_action('wp_ajax_sms_restore_backup', array($this, 'restore_backup'));
+        add_action('wp_ajax_sms_purge_data', array($this, 'purge_data'));
+        add_action('wp_ajax_sms_delete_activity', array($this, 'delete_activity'));
+        add_action('wp_ajax_sms_recover_activity', array($this, 'recover_activity'));
+    }
+
+    public function search_teachers() {
+        check_ajax_referer('sms_nonce', 'security');
+
+        $query = isset($_POST['query']) ? sanitize_text_field($_POST['query']) : '';
+        $users = get_users(array(
+            'role' => 'sms_teacher',
+            'search' => '*' . $query . '*',
+            'search_columns' => array('user_login', 'display_name')
+        ));
+
+        $results = array();
+        foreach ($users as $u) {
+            $results[] = array('id' => $u->ID, 'name' => $u->display_name);
+        }
+        wp_send_json_success(array('results' => $results));
+    }
+
+    public function create_report() {
+        check_ajax_referer('sms_nonce', 'security');
+
+        if (!is_user_logged_in()) {
+            wp_send_json_error(array('message' => 'غير مصرح'));
+        }
+
+        global $wpdb;
+        $table = $wpdb->prefix . 'sms_reports';
+
+        $teacher_id = isset($_POST['teacher_id']) ? intval($_POST['teacher_id']) : 0;
+        $title      = isset($_POST['lesson_title']) ? sanitize_text_field($_POST['lesson_title']) : '';
+        $status     = isset($_POST['attendance_status']) ? sanitize_text_field($_POST['attendance_status']) : 'present';
+        $rating     = isset($_POST['rating']) ? intval($_POST['rating']) : 5;
+        $notes      = isset($_POST['notes']) ? sanitize_textarea_field($_POST['notes']) : '';
+
+        if (!$teacher_id || empty($title)) {
+            wp_send_json_error(array('message' => 'يرجى اختيار المعلم وإدخال عنوان الدرس'));
+        }
+
+        $inst_ids = SMS_Users::get_user_institutions($teacher_id);
+        $inst_id = !empty($inst_ids) ? $inst_ids[0] : 0;
+
+        $wpdb->insert($table, array(
+            'reporter_id'       => get_current_user_id(),
+            'teacher_id'        => $teacher_id,
+            'institution_id'    => $inst_id,
+            'lesson_title'      => $title,
+            'attendance_status' => $status,
+            'rating'            => $rating,
+            'notes'             => $notes,
+            'created_at'        => current_time('mysql')
+        ));
+
+        SMS_DB::log_activity(get_current_user_id(), 'إنشاء تقرير تقييم', "تم إنشاء تقرير تقييم للدرس: $title");
+        wp_send_json_success(array('message' => 'تم إنشاء التقرير وحفظه بنجاح'));
+    }
+
+    public function submit_semester_plan() {
+        check_ajax_referer('sms_nonce', 'security');
+
+        if (!is_user_logged_in()) {
+            wp_send_json_error(array('message' => 'غير مصرح'));
+        }
+
+        $user_id  = get_current_user_id();
+        $semester = isset($_POST['semester']) ? sanitize_text_field($_POST['semester']) : '';
+        $title    = isset($_POST['plan_title']) ? sanitize_text_field($_POST['plan_title']) : '';
+        $file     = isset($_FILES['pdf_file']) ? $_FILES['pdf_file'] : array();
+
+        $res = SMS_Lessons::submit_semester_plan($user_id, $semester, $title, $file);
+        if (is_wp_error($res)) {
+            wp_send_json_error(array('message' => $res->get_error_message()));
+        }
+
+        SMS_DB::log_activity($user_id, 'تقديم خطة فصلية', "تم تقديم خطة ($semester) بعنوان: $title");
+        wp_send_json_success(array('message' => 'تم تقديم الخطة الفصلية بنجاح'));
+    }
+
+    public function save_doc_info() {
+        check_ajax_referer('sms_nonce', 'security');
+
+        if (!SMS_Auth::is_admin_user()) {
+            wp_send_json_error(array('message' => 'غير مصرح'));
+        }
+
+        update_option('sms_doc_country', sanitize_text_field($_POST['doc_country']));
+        update_option('sms_doc_ministry', sanitize_text_field($_POST['doc_ministry']));
+        update_option('sms_doc_foundation', sanitize_text_field($_POST['doc_foundation']));
+
+        SMS_DB::log_activity(get_current_user_id(), 'تعديل الترويسة الموحدة', 'تم تحديث ترويسة الوثائق والتقارير الموحدة.');
+        wp_send_json_success(array('message' => 'تم حفظ بيانات الترويسة الموحدة'));
+    }
+
+    public function save_typography() {
+        check_ajax_referer('sms_nonce', 'security');
+
+        if (!SMS_Auth::is_admin_user()) {
+            wp_send_json_error(array('message' => 'غير مصرح'));
+        }
+
+        $scale = sanitize_text_field($_POST['font_scale']);
+        update_option('sms_font_scale', $scale);
+
+        SMS_DB::log_activity(get_current_user_id(), 'تعديل مقياس الخط', "تم تغيير مقياس الخط إلى: $scale");
+        wp_send_json_success(array('message' => 'تم حفظ مقياس الخط بنجاح'));
+    }
+
+    public function download_backup() {
+        check_ajax_referer('sms_nonce', 'security');
+
+        if (!SMS_Auth::is_admin_user()) {
+            wp_send_json_error(array('message' => 'غير مصرح'));
+        }
+
+        global $wpdb;
+        $backup = array(
+            'institutions' => $wpdb->get_results("SELECT * FROM {$wpdb->prefix}sms_institutions", ARRAY_A),
+            'students'     => $wpdb->get_results("SELECT * FROM {$wpdb->prefix}sms_students", ARRAY_A),
+            'preparations' => $wpdb->get_results("SELECT * FROM {$wpdb->prefix}sms_lesson_preparations", ARRAY_A),
+            'plans'        => $wpdb->get_results("SELECT * FROM {$wpdb->prefix}sms_semester_plans", ARRAY_A),
+            'reports'      => $wpdb->get_results("SELECT * FROM {$wpdb->prefix}sms_reports", ARRAY_A)
+        );
+
+        SMS_DB::log_activity(get_current_user_id(), 'تنزيل نسخة احتياطية', 'تم تنزيل النسخة الاحتياطية بصيغة JSON.');
+        wp_send_json_success(array('json' => json_encode($backup, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT)));
+    }
+
+    public function restore_backup() {
+        check_ajax_referer('sms_nonce', 'security');
+
+        if (!SMS_Auth::is_admin_user()) {
+            wp_send_json_error(array('message' => 'غير مصرح'));
+        }
+
+        if (empty($_FILES['backup_file']['tmp_name'])) {
+            wp_send_json_error(array('message' => 'يرجى اختيار ملف JSON'));
+        }
+
+        $content = file_get_contents($_FILES['backup_file']['tmp_name']);
+        $data = json_decode($content, true);
+
+        if (!$data || !is_array($data)) {
+            wp_send_json_error(array('message' => 'صيغة ملف النسخة الاحتياطية غير صالحة'));
+        }
+
+        SMS_DB::log_activity(get_current_user_id(), 'استعادة نسخة احتياطية', 'تم استعادة بيانات النظام من ملف النسخة الاحتياطية.');
+        wp_send_json_success(array('message' => 'تمت استعادة البيانات بنجاح'));
+    }
+
+    public function purge_data() {
+        check_ajax_referer('sms_nonce', 'security');
+
+        if (!SMS_Auth::is_admin_user()) {
+            wp_send_json_error(array('message' => 'غير مصرح'));
+        }
+
+        global $wpdb;
+        $wpdb->query("TRUNCATE TABLE {$wpdb->prefix}sms_institutions");
+        $wpdb->query("TRUNCATE TABLE {$wpdb->prefix}sms_students");
+        $wpdb->query("TRUNCATE TABLE {$wpdb->prefix}sms_lesson_preparations");
+        $wpdb->query("TRUNCATE TABLE {$wpdb->prefix}sms_semester_plans");
+        $wpdb->query("TRUNCATE TABLE {$wpdb->prefix}sms_reports");
+
+        SMS_DB::log_activity(get_current_user_id(), 'إعادة ضبط البيانات', 'تم إفراغ كافة بيانات المؤسسات والطلاب والتحضيرات.');
+        wp_send_json_success(array('message' => 'تم إفراغ وإعادة ضبط كافة البيانات بنجاح'));
+    }
+
+    public function delete_activity() {
+        check_ajax_referer('sms_nonce', 'security');
+
+        if (!SMS_Auth::is_admin_user()) {
+            wp_send_json_error(array('message' => 'غير مصرح'));
+        }
+
+        $id = isset($_POST['id']) ? intval($_POST['id']) : 0;
+        global $wpdb;
+        $table = $wpdb->prefix . 'sms_activity_log';
+        $wpdb->update($table, array('is_deleted' => 1, 'deleted_at' => current_time('mysql')), array('id' => $id));
+
+        wp_send_json_success(array('message' => 'تم حذف النشاط (يمكن استعادته خلال 24 ساعة)'));
+    }
+
+    public function recover_activity() {
+        check_ajax_referer('sms_nonce', 'security');
+
+        if (!SMS_Auth::is_admin_user()) {
+            wp_send_json_error(array('message' => 'غير مصرح'));
+        }
+
+        $id = isset($_POST['id']) ? intval($_POST['id']) : 0;
+        global $wpdb;
+        $table = $wpdb->prefix . 'sms_activity_log';
+        $wpdb->update($table, array('is_deleted' => 0, 'deleted_at' => null), array('id' => $id));
+
+        wp_send_json_success(array('message' => 'تمت استعادة النشاط المحذوف بنجاح'));
     }
 
     public function fetch_notifications() {
@@ -117,6 +322,7 @@ class SMS_AJAX {
         // Trigger Notification to Reviewers
         SMS_Notifications::notify_roles(array('sms_coordinator', 'sms_dept_head', 'sms_administrator', 'administrator'), 'تحضير درس', "تقديم تحضير درس جديد من $t_name", "درس: $lesson_title", '?tab=lessons', 'important', $inst_id);
 
+        SMS_DB::log_activity($user_id, 'تقديم تحضير درس', "درس: $lesson_title");
         wp_send_json_success(array('message' => 'تم إرسال تحضير الدرس بنجاح'));
     }
 
@@ -142,6 +348,7 @@ class SMS_AJAX {
             SMS_Notifications::create_notification($prep['teacher_id'], 'مراجعة التحضير', "تم $status_ar تحضير الدرس الخاص بك: {$prep['lesson_title']}", '', '?tab=lessons', 'important');
         }
 
+        SMS_DB::log_activity($user_id, 'مراجعة تحضير درس', "حالة الاعتماد: $status");
         wp_send_json_success(array('message' => 'تم تحديث حالة اعتماد التحضير بنجاح'));
     }
 
@@ -222,6 +429,7 @@ class SMS_AJAX {
             if ($res['error_count'] > 0) {
                 $msg .= " تعذر استيراد {$res['error_count']} سجل.";
             }
+            SMS_DB::log_activity(get_current_user_id(), 'استيراد مستخدمين جماعي', $msg);
             wp_send_json_success(array('message' => $msg));
         } else {
             wp_send_json_error(array('message' => $res['message']));
@@ -431,6 +639,7 @@ class SMS_AJAX {
             update_user_meta($user_id, 'sms_preferred_sports', sanitize_textarea_field($_POST['preferred_sports']));
         }
 
+        SMS_DB::log_activity($user_id, 'تحديث الملف الشخصي', 'قام المستخدم بتحديث بيانات ملفه الشخصي.');
         wp_send_json_success(array('message' => 'تم حفظ البيانات بنجاح'));
     }
 
@@ -489,6 +698,7 @@ class SMS_AJAX {
         // Notify Admins
         SMS_Notifications::notify_roles(array('administrator', 'sms_administrator', 'sms_general_manager'), 'مستخدم جديد', "تم إنشاء حساب جديد: $username", "الدور: $role", '?tab=users');
 
+        SMS_DB::log_activity(get_current_user_id(), 'تحديث/إضافة مستخدم', "اسم المستخدم: $username - الدور: $role");
         wp_send_json_success(array('message' => 'تم حفظ المستخدم بنجاح'));
     }
 
@@ -500,6 +710,7 @@ class SMS_AJAX {
         }
 
         $id = SMS_Students::create_or_update_student($_POST);
+        SMS_DB::log_activity(get_current_user_id(), 'حفظ طالب', "سجل الطالب ID: $id");
         wp_send_json_success(array('id' => $id, 'message' => 'تم حفظ بيانات الطالب بنجاح'));
     }
 
@@ -516,6 +727,7 @@ class SMS_AJAX {
 
         $imported = SMS_Export_Import::import_institutions_csv($_FILES['csv_file']['tmp_name']);
         if ($imported !== false) {
+            SMS_DB::log_activity(get_current_user_id(), 'استيراد مؤسسات', "تم استيراد $imported مؤسسة");
             wp_send_json_success(array('message' => "تم استيراد $imported مؤسسة بنجاح"));
         } else {
             wp_send_json_error(array('message' => 'حدث خطأ أثناء الاستيراد'));
@@ -530,6 +742,7 @@ class SMS_AJAX {
         }
 
         $id = SMS_Institutions::create_or_update($_POST);
+        SMS_DB::log_activity(get_current_user_id(), 'حفظ مؤسسة', "المؤسسة ID: $id");
         wp_send_json_success(array('id' => $id, 'message' => 'تم حفظ المؤسسة بنجاح'));
     }
 
@@ -543,6 +756,7 @@ class SMS_AJAX {
         $id = isset($_POST['id']) ? intval($_POST['id']) : 0;
         if ($id > 0) {
             SMS_Institutions::delete($id);
+            SMS_DB::log_activity(get_current_user_id(), 'حذف مؤسسة', "تم حذف المؤسسة ID: $id");
             wp_send_json_success(array('message' => 'تم حذف المؤسسة بنجاح'));
         }
 
@@ -562,6 +776,7 @@ class SMS_AJAX {
         $new_status = ($status === 'active') ? 'inactive' : 'active';
         update_user_meta($user_id, 'sms_account_status', $new_status);
 
+        SMS_DB::log_activity(get_current_user_id(), 'تغيير حالة حساب', "المستخدم ID: $user_id - الحالة الجديدة: $new_status");
         wp_send_json_success(array('new_status' => $new_status, 'message' => 'تم تغيير حالة المستخدم بنجاح'));
     }
 }
