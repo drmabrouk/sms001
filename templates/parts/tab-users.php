@@ -4,18 +4,16 @@ if (!defined('ABSPATH')) {
 }
 
 global $wpdb;
-$all_users = get_users();
 $institutions = SMS_Institutions::get_all();
 $roles = SMS_Roles::get_roles_config();
 $students_table = $wpdb->prefix . 'sms_students';
-$all_students = $wpdb->get_results("SELECT * FROM $students_table ORDER BY id DESC", ARRAY_A);
 
 $subtab = isset($_GET['subtab']) ? sanitize_text_field($_GET['subtab']) : 'users';
 ?>
 <div class="sms-page-header">
-    <h2 class="sms-page-title">إدارة المستخدمين والطلاب</h2>
+    <h2 class="sms-page-title">إدارة مستخدمي النظام والطلاب</h2>
     <div style="display: flex; gap: 10px;">
-        <a href="?tab=users&subtab=users" class="sms-btn <?php echo $subtab === 'users' ? 'sms-btn-dark' : 'sms-btn-outline'; ?>">مستخدمي النظام</a>
+        <a href="?tab=users&subtab=users" class="sms-btn <?php echo $subtab === 'users' ? 'sms-btn-dark' : 'sms-btn-outline'; ?>">بطاقات مستخدمي النظام</a>
         <a href="?tab=users&subtab=students" class="sms-btn <?php echo $subtab === 'students' ? 'sms-btn-dark' : 'sms-btn-outline'; ?>">سجلات الطلاب</a>
         <?php if ($subtab === 'users'): ?>
             <button type="button" class="sms-btn sms-btn-dark" id="sms-btn-add-user">+ إضافة مستخدم</button>
@@ -26,64 +24,115 @@ $subtab = isset($_GET['subtab']) ? sanitize_text_field($_GET['subtab']) : 'users
 </div>
 
 <?php if ($subtab === 'users'): ?>
-    <div class="sms-table-container">
-        <table class="sms-table">
-            <thead>
-                <tr>
-                    <th>اسم المستخدم / الاسم الكامل</th>
-                    <th>البريد الإلكتروني</th>
-                    <th>الدور</th>
-                    <th>المؤسسة التابع لها</th>
-                    <th>الحالة</th>
-                    <th>صلاحية العضوية</th>
-                    <th>الإجراءات</th>
-                </tr>
-            </thead>
-            <tbody>
-                <?php foreach ($all_users as $u):
-                    $status = SMS_Auth::get_user_status($u->ID);
-                    $badge_class = 'sms-badge-' . $status;
-                    $status_label = ($status === 'active') ? 'نشط' : (($status === 'expired') ? 'منتهي الصلاحية' : 'غير نشط');
-                    $user_roles = (array)$u->roles;
-                    $role_label = !empty($user_roles) && isset($roles[$user_roles[0]]) ? $roles[$user_roles[0]]['name'] : 'مستخدم';
-                    $validity = get_user_meta($u->ID, 'sms_membership_validity', true);
-                    $u_inst_ids = SMS_Users::get_user_institutions($u->ID);
-                    $u_inst_names = array();
-                    foreach ($institutions as $inst) {
-                        if (in_array($inst['id'], $u_inst_ids)) {
-                            $u_inst_names[] = $inst['name'];
-                        }
-                    }
-                    $inst_str = !empty($u_inst_names) ? implode('، ', $u_inst_names) : 'غير محدد';
-                ?>
-                    <tr>
-                        <td>
-                            <strong><?php echo esc_html($u->display_name); ?></strong>
-                            <div style="font-size: 0.8rem; color: var(--sms-text-muted);"><?php echo esc_html($u->user_login); ?></div>
-                        </td>
-                        <td><?php echo esc_html($u->user_email); ?></td>
-                        <td><?php echo esc_html($role_label); ?></td>
-                        <td><?php echo esc_html($inst_str); ?></td>
-                        <td><span class="sms-badge <?php echo esc_attr($badge_class); ?>"><?php echo esc_html($status_label); ?></span></td>
-                        <td><?php echo esc_html($validity ? $validity : 'غير محدد'); ?></td>
-                        <td>
-                            <button type="button" class="sms-btn sms-btn-outline sms-btn-edit-user"
-                                data-id="<?php echo esc_attr($u->ID); ?>"
-                                data-username="<?php echo esc_attr($u->user_login); ?>"
-                                data-email="<?php echo esc_attr($u->user_email); ?>"
-                                data-firstname="<?php echo esc_attr(get_user_meta($u->ID, 'first_name', true)); ?>"
-                                data-lastname="<?php echo esc_attr(get_user_meta($u->ID, 'last_name', true)); ?>"
-                                data-role="<?php echo esc_attr(!empty($user_roles) ? $user_roles[0] : ''); ?>"
-                                data-insts='<?php echo esc_attr(json_encode($u_inst_ids)); ?>'
-                                data-memnum="<?php echo esc_attr(get_user_meta($u->ID, 'sms_membership_number', true)); ?>"
-                                data-memval="<?php echo esc_attr($validity); ?>"
-                                style="height: 32px; padding: 0 10px; font-size: 0.8rem;">تعديل</button>
-                            <button type="button" class="sms-btn sms-btn-outline sms-btn-toggle-status" data-id="<?php echo esc_attr($u->ID); ?>" data-status="<?php echo esc_attr($status); ?>" style="height: 32px; padding: 0 10px; font-size: 0.8rem;">تغيير الحالة</button>
-                        </td>
-                    </tr>
-                <?php endforeach; ?>
-            </tbody>
-        </table>
+    <!-- Search, Filter and Sorting Toolbar for User Cards -->
+    <div class="sms-card" style="padding: 16px; margin-bottom: 20px;">
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; align-items: center;">
+            <div class="sms-floating-field" style="margin-bottom: 0;">
+                <input type="text" id="sms-user-search-input" placeholder=" " />
+                <label for="sms-user-search-input">البحث (الاسم / البريد / رقم العضوية)...</label>
+            </div>
+            <div class="sms-floating-field" style="margin-bottom: 0;">
+                <select id="sms-user-filter-role">
+                    <option value="">جميع الأدوار</option>
+                    <?php foreach ($roles as $r_key => $r_val): ?>
+                        <option value="<?php echo esc_attr($r_key); ?>"><?php echo esc_html($r_val['name']); ?></option>
+                    <?php endforeach; ?>
+                </select>
+                <label for="sms-user-filter-role">تصفية حسب الدور</label>
+            </div>
+            <div class="sms-floating-field" style="margin-bottom: 0;">
+                <select id="sms-user-filter-institution">
+                    <option value="">جميع المؤسسات</option>
+                    <?php foreach ($institutions as $inst): ?>
+                        <option value="<?php echo esc_attr($inst['id']); ?>"><?php echo esc_html($inst['name']); ?></option>
+                    <?php endforeach; ?>
+                </select>
+                <label for="sms-user-filter-institution">المؤسسة</label>
+            </div>
+            <div class="sms-floating-field" style="margin-bottom: 0;">
+                <select id="sms-user-filter-status">
+                    <option value="">جميع الحالات</option>
+                    <option value="active">نشط</option>
+                    <option value="inactive">غير نشط</option>
+                    <option value="expired">منتهي الصلاحية</option>
+                </select>
+                <label for="sms-user-filter-status">الحالة</label>
+            </div>
+            <div class="sms-floating-field" style="margin-bottom: 0;">
+                <select id="sms-user-sort-order">
+                    <option value="newest">الأحدث أولاً (افتراضي)</option>
+                    <option value="oldest">الأقدم أولاً</option>
+                    <option value="name">الاسم (أبجدي)</option>
+                </select>
+                <label for="sms-user-sort-order">الترتيب</label>
+            </div>
+        </div>
+    </div>
+
+    <!-- User Cards Grid Container -->
+    <div id="sms-user-cards-container" class="sms-user-grid">
+        <!-- Rendered via AJAX or initial loop -->
+        <?php
+        $args = array(
+            'orderby' => 'user_registered',
+            'order'   => 'DESC',
+        );
+        $all_users = get_users($args);
+        foreach ($all_users as $u):
+            $status = SMS_Auth::get_user_status($u->ID);
+            $badge_class = 'sms-badge-' . $status;
+            $status_label = ($status === 'active') ? 'نشط' : (($status === 'expired') ? 'منتهي الصلاحية' : 'غير نشط');
+            $user_roles = (array)$u->roles;
+            $role_label = !empty($user_roles) && isset($roles[$user_roles[0]]) ? $roles[$user_roles[0]]['name'] : 'مستخدم';
+            $validity = get_user_meta($u->ID, 'sms_membership_validity', true);
+            $mem_num = get_user_meta($u->ID, 'sms_membership_number', true);
+            $u_inst_ids = SMS_Users::get_user_institutions($u->ID);
+            $u_inst_names = array();
+            foreach ($institutions as $inst) {
+                if (in_array($inst['id'], $u_inst_ids)) {
+                    $u_inst_names[] = $inst['name'];
+                }
+            }
+            $inst_str = !empty($u_inst_names) ? implode('، ', $u_inst_names) : 'غير محدد';
+        ?>
+            <div class="sms-user-card">
+                <div class="sms-user-card-header">
+                    <div class="sms-user-card-avatar">
+                        <?php echo esc_html(mb_substr($u->display_name, 0, 1, 'UTF-8')); ?>
+                    </div>
+                    <div>
+                        <strong style="font-size: 0.95rem; display: block;"><?php echo esc_html($u->display_name); ?></strong>
+                        <span style="font-size: 0.8rem; color: var(--sms-text-muted);"><?php echo esc_html($u->user_login); ?></span>
+                    </div>
+                </div>
+
+                <div class="sms-user-card-body">
+                    <div><strong>الدور:</strong> <?php echo esc_html($role_label); ?></div>
+                    <div><strong>المؤسسة:</strong> <?php echo esc_html($inst_str); ?></div>
+                    <div><strong>البريد:</strong> <?php echo esc_html($u->user_email); ?></div>
+                </div>
+
+                <div class="sms-user-card-meta">
+                    <div>رقم العضوية: <strong><?php echo esc_html($mem_num ? $mem_num : '-'); ?></strong></div>
+                    <span class="sms-badge <?php echo esc_attr($badge_class); ?>"><?php echo esc_html($status_label); ?></span>
+                </div>
+
+                <div class="sms-user-card-actions">
+                    <button type="button" class="sms-btn sms-btn-outline sms-btn-edit-user"
+                        data-id="<?php echo esc_attr($u->ID); ?>"
+                        data-username="<?php echo esc_attr($u->user_login); ?>"
+                        data-email="<?php echo esc_attr($u->user_email); ?>"
+                        data-firstname="<?php echo esc_attr(get_user_meta($u->ID, 'first_name', true)); ?>"
+                        data-lastname="<?php echo esc_attr(get_user_meta($u->ID, 'last_name', true)); ?>"
+                        data-role="<?php echo esc_attr(!empty($user_roles) ? $user_roles[0] : ''); ?>"
+                        data-insts='<?php echo esc_attr(json_encode($u_inst_ids)); ?>'
+                        data-memnum="<?php echo esc_attr($mem_num); ?>"
+                        data-memval="<?php echo esc_attr($validity); ?>"
+                        style="height: 32px; padding: 0 10px; font-size: 0.8rem; flex: 1;">تعديل</button>
+                    <button type="button" class="sms-btn sms-btn-outline sms-btn-toggle-status" data-id="<?php echo esc_attr($u->ID); ?>" data-status="<?php echo esc_attr($status); ?>" style="height: 32px; padding: 0 10px; font-size: 0.8rem; flex: 1;">تغيير الحالة</button>
+                </div>
+            </div>
+        <?php endforeach; ?>
     </div>
 
     <!-- Add/Edit User Modal -->
@@ -124,9 +173,12 @@ $subtab = isset($_GET['subtab']) ? sanitize_text_field($_GET['subtab']) : 'users
                         </select>
                         <label for="usr_role">دور المستخدم</label>
                     </div>
-                    <div class="sms-floating-field">
+                    <div class="sms-floating-field sms-password-toggle-wrapper">
                         <input type="password" id="usr_pass" name="password" placeholder=" " />
-                        <label for="usr_pass">كلمة المرور (اتركه فارغاً عند التعديل للإبقاء عليها)</label>
+                        <label for="usr_pass">كلمة المرور (اتركه فارغاً عند التعديل)</label>
+                        <button type="button" class="sms-password-toggle-btn" data-target="usr_pass">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                        </button>
                     </div>
                 </div>
                 <div class="sms-grid-2">
@@ -145,7 +197,7 @@ $subtab = isset($_GET['subtab']) ? sanitize_text_field($_GET['subtab']) : 'users
                             <option value="<?php echo esc_attr($inst['id']); ?>"><?php echo esc_html($inst['name']); ?></option>
                         <?php endforeach; ?>
                     </select>
-                    <label for="usr_insts" style="top: 8px; transform: none; font-size: 0.72rem;">المؤسسات المرتبطة (اضغط Ctrl للاختيار المتعدد لرئيس القسم)</label>
+                    <label for="usr_insts" style="top: 8px; transform: none; font-size: 0.72rem;">المؤسسات المرتبطة (Ctrl للاختيار المتعدد לרئيس القسم)</label>
                 </div>
                 <div style="margin-top: 20px; text-align: left;">
                     <button type="submit" class="sms-btn sms-btn-dark">حفظ البيانات</button>
@@ -155,52 +207,55 @@ $subtab = isset($_GET['subtab']) ? sanitize_text_field($_GET['subtab']) : 'users
     </div>
 
 <?php else: ?>
-    <!-- Students Subtab View -->
-    <div class="sms-table-container">
-        <table class="sms-table">
-            <thead>
-                <tr>
-                    <th>اسم الطالب</th>
-                    <th>الصف / الشعبة</th>
-                    <th>هاتف ولي الأمر</th>
-                    <th>المؤسسة</th>
-                    <th>حساب تفعيل الدخول</th>
-                    <th>الإجراءات</th>
-                </tr>
-            </thead>
-            <tbody>
-                <?php if (empty($all_students)): ?>
-                    <tr>
-                        <td colspan="6" style="text-align: center; color: var(--sms-text-muted);">لا يوجد سجلات طلاب حالياً.</td>
-                    </tr>
-                <?php else: ?>
-                    <?php foreach ($all_students as $st):
-                        $st_inst_name = 'غير محدد';
-                        foreach ($institutions as $inst) {
-                            if ($inst['id'] == $st['institution_id']) {
-                                $st_inst_name = $inst['name'];
-                                break;
-                            }
-                        }
-                    ?>
-                        <tr>
-                            <td><strong><?php echo esc_html($st['first_name'] . ' ' . $st['last_name']); ?></strong></td>
-                            <td><?php echo esc_html($st['grade'] . ' / ' . $st['class_section']); ?></td>
-                            <td><?php echo esc_html($st['parent_phone']); ?></td>
-                            <td><?php echo esc_html($st_inst_name); ?></td>
-                            <td>
-                                <span class="sms-badge <?php echo $st['is_active_account'] ? 'sms-badge-active' : 'sms-badge-inactive'; ?>">
-                                    <?php echo $st['is_active_account'] ? 'مفعل (حساب مستخدم)' : 'غير مفعل (سجل فقط)'; ?>
-                                </span>
-                            </td>
-                            <td>
-                                <button type="button" class="sms-btn sms-btn-outline sms-btn-edit-student" data-student='<?php echo esc_attr(json_encode($st)); ?>' style="height: 32px; padding: 0 10px; font-size: 0.8rem;">تعديل</button>
-                            </td>
-                        </tr>
-                    <?php endforeach; ?>
-                <?php endif; ?>
-            </tbody>
-        </table>
+    <!-- Students Subtab Cards View -->
+    <?php
+    $all_students = $wpdb->get_results("SELECT * FROM $students_table ORDER BY id DESC", ARRAY_A);
+    ?>
+    <div class="sms-user-grid">
+        <?php if (empty($all_students)): ?>
+            <div class="sms-card" style="grid-column: 1 / -1; text-align: center; color: var(--sms-text-muted);">
+                لا يوجد سجلات طلاب حالياً.
+            </div>
+        <?php else: ?>
+            <?php foreach ($all_students as $st):
+                $st_inst_name = 'غير محدد';
+                foreach ($institutions as $inst) {
+                    if ($inst['id'] == $st['institution_id']) {
+                        $st_inst_name = $inst['name'];
+                        break;
+                    }
+                }
+            ?>
+                <div class="sms-user-card">
+                    <div class="sms-user-card-header">
+                        <div class="sms-user-card-avatar">
+                            <?php echo esc_html(mb_substr($st['first_name'], 0, 1, 'UTF-8')); ?>
+                        </div>
+                        <div>
+                            <strong style="font-size: 0.95rem; display: block;"><?php echo esc_html($st['first_name'] . ' ' . $st['last_name']); ?></strong>
+                            <span style="font-size: 0.8rem; color: var(--sms-text-muted);"><?php echo esc_html($st['grade'] . ' / ' . $st['class_section']); ?></span>
+                        </div>
+                    </div>
+
+                    <div class="sms-user-card-body">
+                        <div><strong>المؤسسة:</strong> <?php echo esc_html($st_inst_name); ?></div>
+                        <div><strong>هاتف ولي الأمر:</strong> <?php echo esc_html($st['parent_phone']); ?></div>
+                        <div><strong>بريد ولي الأمر:</strong> <?php echo esc_html($st['parent_email']); ?></div>
+                    </div>
+
+                    <div class="sms-user-card-meta">
+                        <div>حساب المستخدم:</div>
+                        <span class="sms-badge <?php echo $st['is_active_account'] ? 'sms-badge-active' : 'sms-badge-inactive'; ?>">
+                            <?php echo $st['is_active_account'] ? 'مفعل' : 'غير مفعل'; ?>
+                        </span>
+                    </div>
+
+                    <div class="sms-user-card-actions">
+                        <button type="button" class="sms-btn sms-btn-outline sms-btn-edit-student" data-student='<?php echo esc_attr(json_encode($st)); ?>' style="height: 32px; padding: 0 10px; font-size: 0.8rem; width: 100%;">تعديل البيانات</button>
+                    </div>
+                </div>
+            <?php endforeach; ?>
+        <?php endif; ?>
     </div>
 
     <!-- Add/Edit Student Modal -->

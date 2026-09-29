@@ -65,7 +65,9 @@ class SMS_Core {
 
     public function render_app() {
         if (!is_user_logged_in()) {
-            return '<div class="sms-card" style="text-align:center; padding:40px;"><p>يرجى تسجيل الدخول للوصول إلى نظام إدارة الرياضة.</p><a href="' . esc_url(wp_login_url(get_permalink())) . '" class="sms-btn sms-btn-dark">تسجيل الدخول</a></div>';
+            ob_start();
+            include SMS_PLUGIN_DIR . 'templates/login-form.php';
+            return ob_get_clean();
         }
 
         ob_start();

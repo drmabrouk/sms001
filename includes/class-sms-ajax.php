@@ -7,11 +7,125 @@ class SMS_AJAX {
     public function __construct() {
         add_action('wp_ajax_sms_save_profile', array($this, 'save_profile'));
         add_action('wp_ajax_sms_save_user', array($this, 'save_user'));
+        add_action('wp_ajax_sms_filter_users', array($this, 'filter_users'));
         add_action('wp_ajax_sms_save_student', array($this, 'save_student'));
         add_action('wp_ajax_sms_import_institutions', array($this, 'import_institutions'));
         add_action('wp_ajax_sms_save_institution', array($this, 'save_institution'));
         add_action('wp_ajax_sms_delete_institution', array($this, 'delete_institution'));
         add_action('wp_ajax_sms_toggle_user_status', array($this, 'toggle_user_status'));
+    }
+
+    public function filter_users() {
+        check_ajax_referer('sms_nonce', 'security');
+
+        if (!current_user_can('manage_sms_users') && !SMS_Auth::is_admin_user()) {
+            wp_send_json_error(array('message' => 'غير مصرح'));
+        }
+
+        $search      = isset($_POST['search']) ? sanitize_text_field($_POST['search']) : '';
+        $role        = isset($_POST['role']) ? sanitize_text_field($_POST['role']) : '';
+        $institution = isset($_POST['institution']) ? intval($_POST['institution']) : 0;
+        $status      = isset($_POST['status']) ? sanitize_text_field($_POST['status']) : '';
+        $sort        = isset($_POST['sort']) ? sanitize_text_field($_POST['sort']) : 'newest';
+
+        $args = array('number' => 100);
+
+        if ($sort === 'oldest') {
+            $args['orderby'] = 'user_registered';
+            $args['order']   = 'ASC';
+        } elseif ($sort === 'name') {
+            $args['orderby'] = 'display_name';
+            $args['order']   = 'ASC';
+        } else { // default 'newest'
+            $args['orderby'] = 'user_registered';
+            $args['order']   = 'DESC';
+        }
+
+        if (!empty($role)) {
+            $args['role'] = $role;
+        }
+
+        if (!empty($search)) {
+            $args['search'] = '*' . $search . '*';
+            $args['search_columns'] = array('user_login', 'user_email', 'display_name');
+        }
+
+        $users = get_users($args);
+        $roles_config = SMS_Roles::get_roles_config();
+        $institutions = SMS_Institutions::get_all();
+
+        ob_start();
+        if (empty($users)) {
+            echo '<div class="sms-card" style="grid-column: 1 / -1; text-align: center; color: var(--sms-text-muted);">لا توجد نتائج متطابقة مع معايير البحث والتصفية.</div>';
+        } else {
+            foreach ($users as $u) {
+                $u_status = SMS_Auth::get_user_status($u->ID);
+                if (!empty($status) && $u_status !== $status) {
+                    continue;
+                }
+
+                $u_inst_ids = SMS_Users::get_user_institutions($u->ID);
+                if ($institution > 0 && !in_array($institution, $u_inst_ids)) {
+                    continue;
+                }
+
+                $badge_class = 'sms-badge-' . $u_status;
+                $status_label = ($u_status === 'active') ? 'نشط' : (($u_status === 'expired') ? 'منتهي الصلاحية' : 'غير نشط');
+                $user_roles = (array)$u->roles;
+                $role_label = !empty($user_roles) && isset($roles_config[$user_roles[0]]) ? $roles_config[$user_roles[0]]['name'] : 'مستخدم';
+                $validity = get_user_meta($u->ID, 'sms_membership_validity', true);
+                $mem_num = get_user_meta($u->ID, 'sms_membership_number', true);
+
+                $u_inst_names = array();
+                foreach ($institutions as $inst) {
+                    if (in_array($inst['id'], $u_inst_ids)) {
+                        $u_inst_names[] = $inst['name'];
+                    }
+                }
+                $inst_str = !empty($u_inst_names) ? implode('، ', $u_inst_names) : 'غير محدد';
+                ?>
+                <div class="sms-user-card">
+                    <div class="sms-user-card-header">
+                        <div class="sms-user-card-avatar">
+                            <?php echo esc_html(mb_substr($u->display_name, 0, 1, 'UTF-8')); ?>
+                        </div>
+                        <div>
+                            <strong style="font-size: 0.95rem; display: block;"><?php echo esc_html($u->display_name); ?></strong>
+                            <span style="font-size: 0.8rem; color: var(--sms-text-muted);"><?php echo esc_html($u->user_login); ?></span>
+                        </div>
+                    </div>
+
+                    <div class="sms-user-card-body">
+                        <div><strong>الدور:</strong> <?php echo esc_html($role_label); ?></div>
+                        <div><strong>المؤسسة:</strong> <?php echo esc_html($inst_str); ?></div>
+                        <div><strong>البريد:</strong> <?php echo esc_html($u->user_email); ?></div>
+                    </div>
+
+                    <div class="sms-user-card-meta">
+                        <div>رقم العضوية: <strong><?php echo esc_html($mem_num ? $mem_num : '-'); ?></strong></div>
+                        <span class="sms-badge <?php echo esc_attr($badge_class); ?>"><?php echo esc_html($status_label); ?></span>
+                    </div>
+
+                    <div class="sms-user-card-actions">
+                        <button type="button" class="sms-btn sms-btn-outline sms-btn-edit-user"
+                            data-id="<?php echo esc_attr($u->ID); ?>"
+                            data-username="<?php echo esc_attr($u->user_login); ?>"
+                            data-email="<?php echo esc_attr($u->user_email); ?>"
+                            data-firstname="<?php echo esc_attr(get_user_meta($u->ID, 'first_name', true)); ?>"
+                            data-lastname="<?php echo esc_attr(get_user_meta($u->ID, 'last_name', true)); ?>"
+                            data-role="<?php echo esc_attr(!empty($user_roles) ? $user_roles[0] : ''); ?>"
+                            data-insts='<?php echo esc_attr(json_encode($u_inst_ids)); ?>'
+                            data-memnum="<?php echo esc_attr($mem_num); ?>"
+                            data-memval="<?php echo esc_attr($validity); ?>"
+                            style="height: 32px; padding: 0 10px; font-size: 0.8rem; flex: 1;">تعديل</button>
+                        <button type="button" class="sms-btn sms-btn-outline sms-btn-toggle-status" data-id="<?php echo esc_attr($u->ID); ?>" data-status="<?php echo esc_attr($u_status); ?>" style="height: 32px; padding: 0 10px; font-size: 0.8rem; flex: 1;">تغيير الحالة</button>
+                    </div>
+                </div>
+                <?php
+            }
+        }
+        $html = ob_get_clean();
+        wp_send_json_success(array('html' => $html));
     }
 
     public function save_profile() {

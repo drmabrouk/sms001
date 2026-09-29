@@ -1,6 +1,27 @@
 jQuery(document).ready(function ($) {
     'use strict';
 
+    // Mobile Sidebar Toggle
+    $('#sms-mobile-toggle-btn').on('click', function () {
+        $('#sms-global-sidebar').toggleClass('open');
+    });
+
+    // Password Visibility Toggle Eyeball
+    $(document).on('click', '.sms-password-toggle-btn', function (e) {
+        e.preventDefault();
+        var targetId = $(this).data('target');
+        var $input = $('#' + targetId);
+        if ($input.length === 0) return;
+
+        if ($input.attr('type') === 'password') {
+            $input.attr('type', 'text');
+            $(this).css('color', 'var(--sms-dark)');
+        } else {
+            $input.attr('type', 'password');
+            $(this).css('color', 'var(--sms-text-muted)');
+        }
+    });
+
     // Profile Trigger Navigation
     $('#sms-profile-trigger').on('click', function () {
         var url = new URL(window.location.href);
@@ -36,6 +57,39 @@ jQuery(document).ready(function ($) {
         });
     });
 
+    // Dynamic User Search, Filter and Sorting
+    var userFilterTimeout;
+    function fetchFilteredUsers() {
+        var searchVal = $('#sms-user-search-input').val();
+        var roleVal = $('#sms-user-filter-role').val();
+        var instVal = $('#sms-user-filter-institution').val();
+        var statusVal = $('#sms-user-filter-status').val();
+        var sortVal = $('#sms-user-sort-order').val();
+
+        $.post(sms_vars.ajax_url, {
+            action: 'sms_filter_users',
+            security: sms_vars.nonce,
+            search: searchVal,
+            role: roleVal,
+            institution: instVal,
+            status: statusVal,
+            sort: sortVal
+        }, function (res) {
+            if (res.success) {
+                $('#sms-user-cards-container').html(res.data.html);
+            }
+        });
+    }
+
+    $(document).on('input', '#sms-user-search-input', function () {
+        clearTimeout(userFilterTimeout);
+        userFilterTimeout = setTimeout(fetchFilteredUsers, 300);
+    });
+
+    $(document).on('change', '#sms-user-filter-role, #sms-user-filter-institution, #sms-user-filter-status, #sms-user-sort-order', function () {
+        fetchFilteredUsers();
+    });
+
     // User Modal Lifecycle
     var $modalUser = $('#sms-modal-user');
     $('#sms-btn-add-user').on('click', function () {
@@ -49,7 +103,7 @@ jQuery(document).ready(function ($) {
         $modalUser.removeClass('open');
     });
 
-    $('.sms-btn-edit-user').on('click', function () {
+    $(document).on('click', '.sms-btn-edit-user', function () {
         $('#usr_id').val($(this).data('id'));
         $('#usr_username').val($(this).data('username'));
         $('#usr_email').val($(this).data('email'));
@@ -94,7 +148,7 @@ jQuery(document).ready(function ($) {
         $modalStudent.removeClass('open');
     });
 
-    $('.sms-btn-edit-student').on('click', function () {
+    $(document).on('click', '.sms-btn-edit-student', function () {
         var st = $(this).data('student');
         $('#st_id').val(st.id);
         $('#st_first_name').val(st.first_name);
@@ -143,7 +197,7 @@ jQuery(document).ready(function ($) {
         $modalInst.removeClass('open');
     });
 
-    $('.sms-btn-edit-inst').on('click', function () {
+    $(document).on('click', '.sms-btn-edit-inst', function () {
         var data = $(this).data('inst');
         $('#inst_id').val(data.id);
         $('#inst_name').val(data.name);
@@ -207,7 +261,7 @@ jQuery(document).ready(function ($) {
     });
 
     // Delete Institution via AJAX
-    $('.sms-btn-del-inst').on('click', function () {
+    $(document).on('click', '.sms-btn-del-inst', function () {
         if (!confirm('هل أنت تأكد من رغبتك في حذف هذه المؤسسة؟')) return;
         var id = $(this).data('id');
 
@@ -231,7 +285,7 @@ jQuery(document).ready(function ($) {
     });
 
     // Toggle User Status via AJAX
-    $('.sms-btn-toggle-status').on('click', function () {
+    $(document).on('click', '.sms-btn-toggle-status', function () {
         var id = $(this).data('id');
         var status = $(this).data('status');
 

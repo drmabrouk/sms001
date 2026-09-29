@@ -1,4 +1,4 @@
-/* Global Monochromatic RTL UI/UX Design System for SMS */
+@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;800&display=swap');
 
 :root {
     --sms-bg-body: #f4f5f7;
@@ -18,7 +18,7 @@
     --sms-radius-md: 10px;
     --sms-radius-lg: 16px;
     --sms-shadow-subtle: 0 1px 3px rgba(0, 0, 0, 0.05);
-    --sms-font-family: inherit;
+    --sms-font-family: 'Cairo', system-ui, -apple-system, sans-serif;
     --sms-field-height: 48px;
 }
 
@@ -27,10 +27,18 @@ body.sms-standalone-page {
     padding: 0 !important;
     background-color: var(--sms-bg-body) !important;
     color: var(--sms-text-primary);
-    font-family: var(--sms-font-family);
+    font-family: var(--sms-font-family) !important;
     direction: rtl;
     text-align: right;
     overflow-x: hidden;
+}
+
+body.sms-standalone-page *,
+body.sms-standalone-page input,
+body.sms-standalone-page button,
+body.sms-standalone-page select,
+body.sms-standalone-page textarea {
+    font-family: var(--sms-font-family) !important;
 }
 
 /* Hide WP Theme elements if forced */
@@ -50,37 +58,41 @@ body.sms-standalone-page #page {
     background-color: var(--sms-bg-body);
     direction: rtl;
     box-sizing: border-box;
-    padding: 16px;
-    gap: 16px;
+    padding: 24px;
+    position: relative;
 }
 
-/* Right Sidebar Navigation */
+/* Fixed Global Right Sidebar Navigation */
 .sms-sidebar {
-    width: 280px;
-    min-width: 280px;
+    position: fixed;
+    top: 24px;
+    right: 24px;
+    bottom: 24px;
+    width: 260px;
     background: var(--sms-bg-card);
     border: 1px solid var(--sms-border-color);
     border-radius: var(--sms-radius-lg);
     display: flex;
     flex-direction: column;
     justify-content: space-between;
-    padding: 24px 16px;
+    padding: 20px 16px;
     box-shadow: var(--sms-shadow-subtle);
     box-sizing: border-box;
+    z-index: 100;
 }
 
 .sms-sidebar-brand {
     display: flex;
     align-items: center;
     gap: 12px;
-    padding-bottom: 20px;
+    padding-bottom: 16px;
     border-bottom: 1px solid var(--sms-border-color);
-    margin-bottom: 20px;
+    margin-bottom: 16px;
 }
 
 .sms-brand-icon {
-    width: 40px;
-    height: 40px;
+    width: 38px;
+    height: 38px;
     background-color: var(--sms-dark);
     color: #ffffff;
     border-radius: var(--sms-radius-md);
@@ -90,31 +102,32 @@ body.sms-standalone-page #page {
 }
 
 .sms-brand-title {
-    font-size: 1.1rem;
+    font-size: 1.05rem;
     font-weight: 700;
     color: var(--sms-text-primary);
     margin: 0;
 }
 
+/* Compact Sidebar Navigation Density */
 .sms-nav-list {
     list-style: none;
     padding: 0;
     margin: 0;
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 4px;
 }
 
 .sms-nav-item a {
     display: flex;
     align-items: center;
-    gap: 12px;
-    padding: 12px 16px;
+    gap: 10px;
+    padding: 8px 12px;
     color: var(--sms-text-secondary);
     text-decoration: none;
     border-radius: var(--sms-radius-md);
-    font-size: 0.95rem;
-    font-weight: 500;
+    font-size: 0.9rem;
+    font-weight: 600;
     transition: all 0.2s ease;
 }
 
@@ -133,8 +146,8 @@ body.sms-standalone-page #page {
 }
 
 .sms-nav-item svg {
-    width: 20px;
-    height: 20px;
+    width: 18px;
+    height: 18px;
     stroke: var(--sms-text-secondary);
     transition: stroke 0.2s ease;
 }
@@ -142,15 +155,15 @@ body.sms-standalone-page #page {
 /* User Profile Footer Section in Sidebar */
 .sms-sidebar-footer {
     border-top: 1px solid var(--sms-border-color);
-    padding-top: 16px;
-    margin-top: 20px;
+    padding-top: 12px;
+    margin-top: 12px;
 }
 
 .sms-user-profile-card {
     display: flex;
     align-items: center;
-    gap: 12px;
-    padding: 10px;
+    gap: 10px;
+    padding: 8px;
     border-radius: var(--sms-radius-md);
     cursor: pointer;
     transition: background 0.2s ease;
@@ -161,8 +174,8 @@ body.sms-standalone-page #page {
 }
 
 .sms-user-avatar {
-    width: 42px;
-    height: 42px;
+    width: 38px;
+    height: 38px;
     border-radius: 50%;
     background-color: #e2e8f0;
     object-fit: cover;
@@ -171,6 +184,7 @@ body.sms-standalone-page #page {
     justify-content: center;
     font-weight: bold;
     color: var(--sms-dark);
+    font-size: 0.95rem;
 }
 
 .sms-user-info {
@@ -179,8 +193,8 @@ body.sms-standalone-page #page {
 }
 
 .sms-user-name {
-    font-size: 0.9rem;
-    font-weight: 600;
+    font-size: 0.85rem;
+    font-weight: 700;
     color: var(--sms-text-primary);
     white-space: nowrap;
     overflow: hidden;
@@ -188,7 +202,7 @@ body.sms-standalone-page #page {
 }
 
 .sms-user-role {
-    font-size: 0.8rem;
+    font-size: 0.75rem;
     color: var(--sms-text-muted);
 }
 
@@ -196,7 +210,7 @@ body.sms-standalone-page #page {
     background: transparent;
     border: none;
     cursor: pointer;
-    padding: 6px;
+    padding: 4px;
     color: var(--sms-text-muted);
     border-radius: var(--sms-radius-sm);
 }
@@ -205,16 +219,16 @@ body.sms-standalone-page #page {
     color: var(--sms-danger);
 }
 
-/* Main Content Area */
+/* Open Main Content Area - No Outer Surrounding Card */
 .sms-main-content {
-    flex: 1;
-    background: var(--sms-bg-card);
-    border: 1px solid var(--sms-border-color);
-    border-radius: var(--sms-radius-lg);
-    padding: 32px;
-    box-shadow: var(--sms-shadow-subtle);
+    margin-right: 284px;
+    width: calc(100% - 284px);
+    background: transparent;
+    border: none;
+    padding: 0;
+    box-shadow: none;
     box-sizing: border-box;
-    overflow-y: auto;
+    min-height: calc(100vh - 48px);
 }
 
 .sms-page-header {
@@ -222,21 +236,47 @@ body.sms-standalone-page #page {
     justify-content: space-between;
     align-items: center;
     margin-bottom: 24px;
-    padding-bottom: 16px;
+    padding-bottom: 12px;
     border-bottom: 1px solid var(--sms-border-color);
 }
 
 .sms-page-title {
-    font-size: 1.5rem;
-    font-weight: 700;
+    font-size: 1.4rem;
+    font-weight: 800;
     margin: 0;
+    color: var(--sms-text-primary);
+}
+
+/* Password Toggle Eyeball Styling */
+.sms-password-toggle-wrapper {
+    position: relative;
+    width: 100%;
+}
+
+.sms-password-toggle-btn {
+    position: absolute;
+    left: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    padding: 4px;
+    color: var(--sms-text-muted);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 5;
+}
+
+.sms-password-toggle-btn:hover {
     color: var(--sms-text-primary);
 }
 
 /* Monochromatic Floating Labels Form Design System */
 .sms-floating-field {
     position: relative;
-    margin-bottom: 20px;
+    margin-bottom: 16px;
     width: 100%;
 }
 
@@ -249,7 +289,7 @@ body.sms-standalone-page #page {
     border: 1px solid var(--sms-border-color);
     border-radius: var(--sms-radius-md);
     background-color: var(--sms-bg-card);
-    font-size: 0.95rem;
+    font-size: 0.9rem;
     color: var(--sms-text-primary);
     outline: none;
     transition: border-color 0.2s ease, box-shadow 0.2s ease;
@@ -258,7 +298,7 @@ body.sms-standalone-page #page {
 
 .sms-floating-field textarea {
     height: auto;
-    min-height: 100px;
+    min-height: 90px;
     padding-top: 20px;
 }
 
@@ -274,7 +314,7 @@ body.sms-standalone-page #page {
     right: 16px;
     top: 50%;
     transform: translateY(-50%);
-    font-size: 0.9rem;
+    font-size: 0.85rem;
     color: var(--sms-text-muted);
     pointer-events: none;
     transition: all 0.2s ease;
@@ -296,16 +336,9 @@ body.sms-standalone-page #page {
 .sms-floating-field textarea:not(:placeholder-shown) ~ label {
     top: 6px;
     transform: translateY(0);
-    font-size: 0.72rem;
-    font-weight: 600;
+    font-size: 0.7rem;
+    font-weight: 700;
     color: var(--sms-text-secondary);
-}
-
-.sms-floating-field input[readonly],
-.sms-floating-field select[disabled] {
-    background-color: #f9fafb;
-    cursor: not-allowed;
-    opacity: 0.8;
 }
 
 /* Button System */
@@ -315,10 +348,10 @@ body.sms-standalone-page #page {
     justify-content: center;
     gap: 8px;
     height: var(--sms-field-height);
-    padding: 0 20px;
+    padding: 0 18px;
     border-radius: var(--sms-radius-md);
-    font-size: 0.95rem;
-    font-weight: 600;
+    font-size: 0.9rem;
+    font-weight: 700;
     cursor: pointer;
     border: 1px solid transparent;
     transition: all 0.2s ease;
@@ -354,69 +387,138 @@ body.sms-standalone-page #page {
     background-color: var(--sms-danger-hover);
 }
 
-/* Container Cards & Tables */
+/* Container Cards & User Cards Grid */
 .sms-card {
     background: var(--sms-bg-card);
     border: 1px solid var(--sms-border-color);
     border-radius: var(--sms-radius-md);
     padding: 20px;
     margin-bottom: 20px;
+    box-shadow: var(--sms-shadow-subtle);
 }
 
+.sms-user-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 16px;
+    margin-top: 16px;
+}
+
+.sms-user-card {
+    background: var(--sms-bg-card);
+    border: 1px solid var(--sms-border-color);
+    border-radius: var(--sms-radius-lg);
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: 14px;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    box-shadow: var(--sms-shadow-subtle);
+}
+
+.sms-user-card:hover {
+    border-color: var(--sms-border-focus);
+}
+
+.sms-user-card-header {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+
+.sms-user-card-avatar {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background-color: #f1f5f9;
+    color: var(--sms-dark);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.1rem;
+    font-weight: 800;
+    border: 1px solid var(--sms-border-color);
+}
+
+.sms-user-card-body {
+    font-size: 0.85rem;
+    color: var(--sms-text-secondary);
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.sms-user-card-meta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 0.8rem;
+    color: var(--sms-text-muted);
+}
+
+.sms-user-card-actions {
+    display: flex;
+    gap: 8px;
+    padding-top: 10px;
+    border-top: 1px solid var(--sms-border-color);
+}
+
+/* Status Badges */
+.sms-badge {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 700;
+}
+
+.sms-badge-active {
+    background-color: #f0fdf4;
+    color: #166534;
+    border: 1px solid #bbf7d0;
+}
+
+.sms-badge-inactive {
+    background-color: #f8fafc;
+    color: #475569;
+    border: 1px solid #e2e8f0;
+}
+
+.sms-badge-expired {
+    background-color: #fef2f2;
+    color: #991b1b;
+    border: 1px solid #fecaca;
+}
+
+/* Table styling for fallback */
 .sms-table-container {
     width: 100%;
     overflow-x: auto;
     border: 1px solid var(--sms-border-color);
     border-radius: var(--sms-radius-md);
+    background: var(--sms-bg-card);
 }
 
 .sms-table {
     width: 100%;
     border-collapse: collapse;
     text-align: right;
-    font-size: 0.9rem;
+    font-size: 0.88rem;
 }
 
 .sms-table th {
     background-color: #f9fafb;
     color: var(--sms-text-secondary);
-    font-weight: 600;
-    padding: 14px 16px;
+    font-weight: 700;
+    padding: 12px 16px;
     border-bottom: 1px solid var(--sms-border-color);
 }
 
 .sms-table td {
-    padding: 14px 16px;
+    padding: 12px 16px;
     border-bottom: 1px solid var(--sms-border-color);
     color: var(--sms-text-primary);
-}
-
-.sms-table tr:last-child td {
-    border-bottom: none;
-}
-
-/* Status Badges */
-.sms-badge {
-    display: inline-block;
-    padding: 4px 10px;
-    border-radius: 9999px;
-    font-size: 0.78rem;
-    font-weight: 600;
-}
-
-.sms-badge-active {
-    background-color: #e6f4ea;
-    color: #137333;
-}
-
-.sms-badge-inactive {
-    background-color: #f1f3f4;
-    color: #5f6368;
-}
-
-.sms-badge-expired {
-    background-color: #fce8e6;
-    color: #c5221f;
 }
 
 /* Modal Dialog */
@@ -453,43 +555,71 @@ body.sms-standalone-page #page {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding-bottom: 16px;
+    padding-bottom: 14px;
     border-bottom: 1px solid var(--sms-border-color);
-    margin-bottom: 20px;
+    margin-bottom: 18px;
 }
 
 .sms-modal-title {
-    font-size: 1.2rem;
-    font-weight: 700;
+    font-size: 1.15rem;
+    font-weight: 800;
     margin: 0;
 }
 
 .sms-modal-close {
     background: none;
     border: none;
-    font-size: 1.5rem;
+    font-size: 1.4rem;
     cursor: pointer;
     color: var(--sms-text-muted);
 }
 
-/* Grid helper */
 .sms-grid-2 {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 16px;
 }
 
-/* Responsive Rules */
+/* Mobile Toggle Header */
+.sms-mobile-nav-toggle {
+    display: none;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--sms-bg-card);
+    padding: 12px 16px;
+    border: 1px solid var(--sms-border-color);
+    border-radius: var(--sms-radius-md);
+    margin-bottom: 16px;
+}
+
+/* Mobile Responsive */
 @media (max-width: 992px) {
     .sms-app-wrapper {
-        flex-direction: column;
-        padding: 10px;
+        padding: 12px;
+    }
+
+    .sms-mobile-nav-toggle {
+        display: flex;
     }
 
     .sms-sidebar {
+        position: fixed;
+        top: 0;
+        right: -300px;
+        bottom: 0;
+        width: 280px;
+        border-radius: 0;
+        transition: right 0.3s ease;
+        box-shadow: -5px 0 25px rgba(0,0,0,0.15);
+    }
+
+    .sms-sidebar.open {
+        right: 0;
+    }
+
+    .sms-main-content {
+        margin-right: 0;
         width: 100%;
-        min-width: 100%;
-        border-radius: var(--sms-radius-md);
     }
 
     .sms-grid-2 {

@@ -12,8 +12,21 @@ $primary_role_key = !empty($roles) ? $roles[0] : '';
 $primary_role_label = isset($role_names[$primary_role_key]) ? $role_names[$primary_role_key]['name'] : 'مستخدم';
 ?>
 <div class="sms-app-wrapper">
-    <!-- Right Sidebar Navigation -->
-    <aside class="sms-sidebar">
+    <!-- Mobile Top Header Bar -->
+    <div class="sms-mobile-nav-toggle">
+        <div style="display: flex; align-items: center; gap: 8px;">
+            <div class="sms-brand-icon" style="width:30px; height:30px;">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg>
+            </div>
+            <strong style="font-size: 0.95rem;">نظام إدارة الرياضة</strong>
+        </div>
+        <button type="button" class="sms-btn sms-btn-outline" id="sms-mobile-toggle-btn" style="height:36px; padding:0 12px; font-size:0.8rem;">
+            القائمة ☰
+        </button>
+    </div>
+
+    <!-- Fixed Right Sidebar Navigation -->
+    <aside class="sms-sidebar" id="sms-global-sidebar">
         <div>
             <div class="sms-sidebar-brand">
                 <div class="sms-brand-icon">
@@ -70,7 +83,7 @@ $primary_role_label = isset($role_names[$primary_role_key]) ? $role_names[$prima
             </nav>
         </div>
 
-        <!-- Sidebar User Profile Area -->
+        <!-- Sidebar User Profile Footer -->
         <div class="sms-sidebar-footer">
             <div class="sms-user-profile-card" id="sms-profile-trigger" data-tab="profile">
                 <div class="sms-user-avatar">
@@ -87,7 +100,7 @@ $primary_role_label = isset($role_names[$primary_role_key]) ? $role_names[$prima
         </div>
     </aside>
 
-    <!-- Main Content Area -->
+    <!-- Open Main Content Area -->
     <main class="sms-main-content">
         <?php
         switch ($current_tab) {
