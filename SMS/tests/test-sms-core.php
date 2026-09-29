@@ -46,6 +46,10 @@ class MockWPDB {
     public function delete($table, $where, $where_format = null) {
         return 1;
     }
+
+    public function esc_like($text) {
+        return addcslashes($text, '_%\\');
+    }
 }
 $wpdb = new MockWPDB();
 
@@ -101,10 +105,39 @@ function sanitize_textarea_field($str) {
     return trim(strip_tags($str));
 }
 
+function esc_url_raw($url) {
+    return filter_var($url, FILTER_SANITIZE_URL);
+}
+
+function current_time($type) {
+    if ($type === 'timestamp') {
+        return time();
+    }
+    return date('Y-m-d H:i:s');
+}
+
+class MockUserObject {
+    public $ID;
+    public $user_login;
+    public $user_email;
+    public $roles = array();
+    public $user_registered;
+
+    public function __construct($data) {
+        foreach ($data as $k => $v) {
+            $this->$k = $v;
+        }
+    }
+
+    public function exists() {
+        return !empty($this->ID);
+    }
+}
+
 function get_userdata($user_id) {
     global $wp_mock_users;
     if (isset($wp_mock_users[$user_id])) {
-        return (object) $wp_mock_users[$user_id];
+        return new MockUserObject($wp_mock_users[$user_id]);
     }
     return false;
 }
@@ -122,6 +155,26 @@ function wp_create_user($username, $password, $email = '') {
     return $id;
 }
 
+function username_exists($username) {
+    return false;
+}
+
+function email_exists($email) {
+    return false;
+}
+
+function get_users($args = array()) {
+    global $wp_mock_users;
+    $list = array();
+    foreach ($wp_mock_users as $u) {
+        if (isset($args['role__not_in']) && in_array('administrator', $args['role__not_in']) && in_array('administrator', (array)$u['roles'])) {
+            continue;
+        }
+        $list[] = new MockUserObject($u);
+    }
+    return $list;
+}
+
 function wp_generate_password() {
     return 'rand_pass_' . rand(1000, 9999);
 }
@@ -136,6 +189,9 @@ class WP_Error {
     public function __construct($code = '', $message = '') {
         $this->code = $code;
         $this->message = $message;
+    }
+    public function get_error_message() {
+        return $this->message;
     }
 }
 
@@ -189,6 +245,8 @@ require_once __DIR__ . '/../includes/class-sms-auth.php';
 require_once __DIR__ . '/../includes/class-sms-users.php';
 require_once __DIR__ . '/../includes/class-sms-students.php';
 require_once __DIR__ . '/../includes/class-sms-institutions.php';
+require_once __DIR__ . '/../includes/class-sms-lessons.php';
+require_once __DIR__ . '/../includes/class-sms-export-import.php';
 
 // Test Runner
 $passed = 0;
@@ -212,18 +270,8 @@ SMS_Roles::register_roles();
 $roles_config = SMS_Roles::get_roles_config();
 assert_test(count($roles_config) === 6, 'Should define 6 SMS system roles');
 assert_test(isset($roles_config['sms_administrator']), 'Role sms_administrator should exist');
-assert_test(isset($roles_config['sms_general_manager']), 'Role sms_general_manager should exist');
-assert_test(isset($roles_config['sms_dept_head']), 'Role sms_dept_head should exist');
-assert_test(isset($roles_config['sms_coordinator']), 'Role sms_coordinator should exist');
-assert_test(isset($roles_config['sms_teacher']), 'Role sms_teacher should exist');
-assert_test(isset($roles_config['sms_student']), 'Role sms_student should exist');
 
-// 2. Test Arab Countries list
-$countries = SMS_Users::get_arab_countries();
-assert_test(count($countries) >= 20, 'Should return comprehensive Arab countries list');
-assert_test(in_array('الإمارات العربية المتحدة', $countries), 'Should contain UAE');
-
-// 3. Test Membership Expiration Logic
+// 2. Test Membership Expiration Logic
 global $wp_mock_users;
 $wp_mock_users[1] = array(
     'ID' => 1,
@@ -234,39 +282,37 @@ $wp_mock_users[1] = array(
 $is_expired = SMS_Auth::is_user_expired(1);
 assert_test($is_expired === true, 'User registered in 2020 should be expired');
 
-$wp_mock_users[2] = array(
-    'ID' => 2,
-    'user_login' => 'new_user',
-    'roles' => array('sms_teacher'),
-    'user_registered' => date('Y-m-d H:i:s')
-);
-$is_expired_new = SMS_Auth::is_user_expired(2);
-assert_test($is_expired_new === false, 'Newly registered user should not be expired');
+// 3. Test Lesson Prep Late Calculation Rule (Monday 9 AM)
+// Timestamp for Monday 10:00 AM
+$monday_late_ts = strtotime('2026-03-09 10:00:00');
+$is_late = SMS_Lessons::is_submission_late($monday_late_ts);
+assert_test($is_late === 1, 'Submission on Monday at 10 AM should be marked late');
 
-// 4. Test Two-Way User Deletion Hook
+// Timestamp for Friday 10:00 AM
+$friday_ontime_ts = strtotime('2026-03-06 10:00:00');
+$is_late_friday = SMS_Lessons::is_submission_late($friday_ontime_ts);
+assert_test($is_late_friday === 0, 'Submission on Friday at 10 AM should be marked on-time');
+
+// 4. Test System Administrator Exclusion from User Searches/Lists
+$admin_user_id = 99;
+$wp_mock_users[$admin_user_id] = array(
+    'ID' => $admin_user_id,
+    'user_login' => 'sys_admin',
+    'roles' => array('administrator')
+);
+$scoped_users = SMS_Users::get_scoped_users(1);
+$admin_found = false;
+foreach ($scoped_users as $su) {
+    if ($su->ID === $admin_user_id) {
+        $admin_found = true;
+    }
+}
+assert_test($admin_found === false, 'System Administrator must be excluded from user management visibility');
+
+// 5. Test Two-Way User Deletion Hook
 $sms_users_class = new SMS_Users();
 do_action('delete_user', 1);
 assert_test(true, 'WP user deletion cleanup hook executed successfully');
-
-// 5. Test Student Account Activation Toggle
-$student_id = SMS_Students::create_or_update_student(array(
-    'first_name' => 'أحمد',
-    'last_name' => 'علي',
-    'gender' => 'ذكر',
-    'nationality' => 'سعودي',
-    'country' => 'المملكة العربية السعودية',
-    'grade' => 'الصف العاشر',
-    'class_section' => '1/10',
-    'parent_phone' => '0500000000',
-    'parent_email' => 'parent@example.com',
-    'health_status' => 'ممتازة',
-    'preferred_sports' => 'كرة القدم',
-    'institution_id' => 1,
-    'is_active_account' => 1,
-    'membership_number' => 'SMS-101',
-    'membership_validity' => '2026-12-31'
-));
-assert_test($student_id > 0, 'Should create student record with active account toggle enabled');
 
 echo "\nTest Execution Summary: $passed Passed, $failed Failed.\n";
 

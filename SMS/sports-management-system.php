@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Sports Management System (SMS)
  * Plugin URI:  https://example.com/sports-management-system
- * Description: نظام إدارة الرياضة (SMS) - تطبيق متكامل لتنظيم وإدارة المؤسسات الرياضية والمستخدمين والطلاب.
+ * Description: نظام إدارة الرياضة (SMS) - تطبيق متكامل لتنظيم وإدارة المؤسسات الرياضية والمستخدمين والطلاب وتحضير الدروس.
  * Version:     1.0.0
  * Author:      SMS Team
  * Text Domain: sports-management-system
@@ -27,6 +27,7 @@ require_once SMS_PLUGIN_DIR . 'includes/class-sms-auth.php';
 require_once SMS_PLUGIN_DIR . 'includes/class-sms-institutions.php';
 require_once SMS_PLUGIN_DIR . 'includes/class-sms-users.php';
 require_once SMS_PLUGIN_DIR . 'includes/class-sms-students.php';
+require_once SMS_PLUGIN_DIR . 'includes/class-sms-lessons.php';
 require_once SMS_PLUGIN_DIR . 'includes/class-sms-ajax.php';
 require_once SMS_PLUGIN_DIR . 'includes/class-sms-export-import.php';
 require_once SMS_PLUGIN_DIR . 'includes/class-sms-core.php';

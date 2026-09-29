@@ -19,6 +19,7 @@ $country    = get_user_meta($user->ID, 'sms_country', true);
 $job        = get_user_meta($user->ID, 'sms_job_position', true);
 $mem_num    = get_user_meta($user->ID, 'sms_membership_number', true);
 $mem_val    = get_user_meta($user->ID, 'sms_membership_validity', true);
+$avatar_url = get_user_meta($user->ID, 'sms_avatar_url', true);
 
 // Student fields
 $grade      = get_user_meta($user->ID, 'sms_grade', true);
@@ -33,7 +34,22 @@ $sports     = get_user_meta($user->ID, 'sms_preferred_sports', true);
     <h2 class="sms-page-title">إدارة الملف الشخصي</h2>
 </div>
 
-<form id="sms-profile-form" class="sms-card">
+<form id="sms-profile-form" class="sms-card" enctype="multipart/form-data">
+    <div style="display: flex; align-items: center; gap: 20px; margin-bottom: 24px; padding-bottom: 20px; border-bottom: 1px solid var(--sms-border-color);">
+        <div style="width: 70px; height: 70px; border-radius: 50%; overflow: hidden; background: #f1f5f9; border: 2px solid var(--sms-border-color); display: flex; align-items: center; justify-content: center; font-size: 1.5rem; font-weight: 800; color: var(--sms-dark);">
+            <?php if ($avatar_url): ?>
+                <img src="<?php echo esc_url($avatar_url); ?>" style="width:100%; height:100%; object-fit:cover;" />
+            <?php else: ?>
+                <?php echo esc_html(mb_substr($user->display_name, 0, 1, 'UTF-8')); ?>
+            <?php endif; ?>
+        </div>
+        <div style="flex: 1;">
+            <label style="font-weight: 700; font-size: 0.9rem; display: block; margin-bottom: 6px;">الصورة الشخصية (Profile Picture)</label>
+            <input type="file" name="avatar_file" accept="image/jpeg,image/png,image/webp" style="font-size: 0.85rem;" />
+            <span style="font-size: 0.8rem; color: var(--sms-text-muted); display: block; margin-top: 4px;">الصيغ المسموحة: JPG, PNG, WEBP. الحد الأقصى للحجم: 3 ميجابايت.</span>
+        </div>
+    </div>
+
     <div class="sms-grid-2">
         <div class="sms-floating-field">
             <input type="text" id="prof_first_name" name="first_name" value="<?php echo esc_attr($first_name); ?>" placeholder=" " required />
@@ -93,13 +109,19 @@ $sports     = get_user_meta($user->ID, 'sms_preferred_sports', true);
     </div>
 
     <div class="sms-grid-2">
-        <div class="sms-floating-field">
+        <div class="sms-floating-field sms-password-toggle-wrapper">
             <input type="password" id="prof_pass" name="password" placeholder=" " />
             <label for="prof_pass">كلمة المرور الجديدة (اتركه فارغاً للإبقاء عليها)</label>
+            <button type="button" class="sms-password-toggle-btn" data-target="prof_pass">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+            </button>
         </div>
-        <div class="sms-floating-field">
+        <div class="sms-floating-field sms-password-toggle-wrapper">
             <input type="password" id="prof_pass_confirm" name="password_confirm" placeholder=" " />
             <label for="prof_pass_confirm">تأكيد كلمة المرور</label>
+            <button type="button" class="sms-password-toggle-btn" data-target="prof_pass_confirm">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+            </button>
         </div>
     </div>
 

@@ -57,9 +57,30 @@ class SMS_DB {
             UNIQUE KEY user_inst (user_id, institution_id)
         ) $charset_collate;";
 
+        $table_lessons = $wpdb->prefix . 'sms_lesson_preparations';
+        $sql_lessons = "CREATE TABLE IF NOT EXISTS $table_lessons (
+            id BIGINT(20) UNSIGNED NOT NULL AUTO_INCREMENT,
+            teacher_id BIGINT(20) UNSIGNED NOT NULL,
+            institution_id BIGINT(20) UNSIGNED DEFAULT 0,
+            prep_number INT(11) UNSIGNED NOT NULL,
+            lesson_title VARCHAR(255) NOT NULL,
+            file_url VARCHAR(255) NOT NULL,
+            file_path VARCHAR(255) NOT NULL,
+            submission_time DATETIME DEFAULT CURRENT_TIMESTAMP,
+            is_late TINYINT(1) DEFAULT 0,
+            review_status VARCHAR(50) DEFAULT 'pending',
+            reviewer_id BIGINT(20) UNSIGNED DEFAULT 0,
+            reviewed_at DATETIME DEFAULT NULL,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY  (id),
+            KEY teacher_id (teacher_id),
+            KEY institution_id (institution_id)
+        ) $charset_collate;";
+
         require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
         dbDelta($sql_institutions);
         dbDelta($sql_students);
         dbDelta($sql_user_institutions);
+        dbDelta($sql_lessons);
     }
 }

@@ -70,6 +70,43 @@ class SMS_Users {
         }
     }
 
+    public static function get_scoped_users($viewer_id, $args = array()) {
+        $viewer = get_userdata($viewer_id);
+        if (!$viewer) return array();
+
+        $roles = (array) $viewer->roles;
+        $primary_role = !empty($roles) ? $roles[0] : '';
+        $is_admin = SMS_Auth::is_admin_user($viewer);
+
+        // Always exclude System Administrators from list views & searches
+        $args['role__not_in'] = array('administrator', 'sms_administrator');
+
+        if ($is_admin || in_array('sms_general_manager', $roles)) {
+            return get_users($args);
+        }
+
+        $assigned_insts = self::get_user_institutions($viewer_id);
+        if (empty($assigned_insts)) {
+            return array();
+        }
+
+        if ($primary_role === 'sms_coordinator') {
+            $args['role'] = 'sms_teacher';
+        }
+
+        $all_candidates = get_users($args);
+        $filtered = array();
+
+        foreach ($all_candidates as $cand) {
+            $cand_insts = self::get_user_institutions($cand->ID);
+            if (array_intersect($assigned_insts, $cand_insts)) {
+                $filtered[] = $cand;
+            }
+        }
+
+        return $filtered;
+    }
+
     public function on_wp_delete_user($user_id) {
         global $wpdb;
 

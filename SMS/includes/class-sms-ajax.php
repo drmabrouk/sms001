@@ -8,11 +8,133 @@ class SMS_AJAX {
         add_action('wp_ajax_sms_save_profile', array($this, 'save_profile'));
         add_action('wp_ajax_sms_save_user', array($this, 'save_user'));
         add_action('wp_ajax_sms_filter_users', array($this, 'filter_users'));
+        add_action('wp_ajax_sms_import_users', array($this, 'import_users'));
         add_action('wp_ajax_sms_save_student', array($this, 'save_student'));
         add_action('wp_ajax_sms_import_institutions', array($this, 'import_institutions'));
         add_action('wp_ajax_sms_save_institution', array($this, 'save_institution'));
         add_action('wp_ajax_sms_delete_institution', array($this, 'delete_institution'));
         add_action('wp_ajax_sms_toggle_user_status', array($this, 'toggle_user_status'));
+        add_action('wp_ajax_sms_submit_lesson', array($this, 'submit_lesson'));
+        add_action('wp_ajax_sms_review_prep', array($this, 'review_prep'));
+        add_action('wp_ajax_sms_filter_preps', array($this, 'filter_preps'));
+    }
+
+    public function submit_lesson() {
+        check_ajax_referer('sms_nonce', 'security');
+
+        if (!is_user_logged_in()) {
+            wp_send_json_error(array('message' => 'غير مصرح'));
+        }
+
+        $user_id = get_current_user_id();
+        $lesson_title = isset($_POST['lesson_title']) ? sanitize_text_field($_POST['lesson_title']) : '';
+        $file = isset($_FILES['pdf_file']) ? $_FILES['pdf_file'] : array();
+
+        $result = SMS_Lessons::submit_lesson_prep($user_id, $lesson_title, $file);
+
+        if (is_wp_error($result)) {
+            wp_send_json_error(array('message' => $result->get_error_message()));
+        }
+
+        wp_send_json_success(array('message' => 'تم إرسال تحضير الدرس بنجاح'));
+    }
+
+    public function review_prep() {
+        check_ajax_referer('sms_nonce', 'security');
+
+        if (!is_user_logged_in()) {
+            wp_send_json_error(array('message' => 'غير مصرح'));
+        }
+
+        $prep_id  = isset($_POST['prep_id']) ? intval($_POST['prep_id']) : 0;
+        $status   = isset($_POST['status']) ? sanitize_text_field($_POST['status']) : 'approved';
+        $user_id  = get_current_user_id();
+
+        SMS_Lessons::review_prep($prep_id, $user_id, $status);
+        wp_send_json_success(array('message' => 'تم تحديث حالة اعتماد التحضير بنجاح'));
+    }
+
+    public function filter_preps() {
+        check_ajax_referer('sms_nonce', 'security');
+
+        if (!is_user_logged_in()) {
+            wp_send_json_error(array('message' => 'غير مصرح'));
+        }
+
+        $search        = isset($_POST['search']) ? sanitize_text_field($_POST['search']) : '';
+        $status_filter = isset($_POST['status']) ? sanitize_text_field($_POST['status']) : '';
+        $inst_filter   = isset($_POST['institution']) ? intval($_POST['institution']) : 0;
+        $user_id       = get_current_user_id();
+
+        $preps = SMS_Lessons::get_reviewer_preparations($user_id, $search, $status_filter, $inst_filter);
+
+        ob_start();
+        if (empty($preps)) {
+            echo '<div class="sms-card" style="grid-column: 1 / -1; text-align: center; color: var(--sms-text-muted);">لا توجد تحضيرات متطابقة مع البحث.</div>';
+        } else {
+            foreach ($preps as $prep) {
+                $t_user = get_userdata($prep['teacher_id']);
+                $t_name = $t_user ? $t_user->display_name : 'معلم';
+                $status_class = ($prep['review_status'] === 'approved') ? 'sms-badge-active' : (($prep['review_status'] === 'rejected') ? 'sms-badge-expired' : 'sms-badge-inactive');
+                $status_label = ($prep['review_status'] === 'approved') ? 'معتمد' : (($prep['review_status'] === 'rejected') ? 'مرفوض' : 'قيد المراجعة');
+                $late_class   = $prep['is_late'] ? 'sms-badge-expired' : 'sms-badge-active';
+                $late_label   = $prep['is_late'] ? 'متأخر' : 'في الموعد';
+                ?>
+                <div class="sms-user-card">
+                    <div class="sms-user-card-header">
+                        <div class="sms-user-card-avatar">
+                            <?php echo esc_html(mb_substr($t_name, 0, 1, 'UTF-8')); ?>
+                        </div>
+                        <div>
+                            <strong style="font-size: 0.95rem; display: block;"><?php echo esc_html($prep['lesson_title']); ?></strong>
+                            <span style="font-size: 0.8rem; color: var(--sms-text-muted);"><?php echo esc_html($t_name); ?> - تحضير الدرس <?php echo esc_html($prep['prep_number']); ?></span>
+                        </div>
+                    </div>
+
+                    <div class="sms-user-card-body">
+                        <div><strong>تاريخ ووقت التقديم:</strong> <?php echo esc_html(date('Y-m-d H:i', strtotime($prep['submission_time']))); ?></div>
+                        <div style="display: flex; gap: 8px; margin-top: 4px;">
+                            <span class="sms-badge <?php echo esc_attr($late_class); ?>"><?php echo esc_html($late_label); ?></span>
+                            <span class="sms-badge <?php echo esc_attr($status_class); ?>"><?php echo esc_html($status_label); ?></span>
+                        </div>
+                    </div>
+
+                    <div class="sms-user-card-actions" style="flex-direction: column;">
+                        <a href="<?php echo esc_url($prep['file_url']); ?>" target="_blank" class="sms-btn sms-btn-outline" style="height:32px; padding:0 10px; font-size:0.8rem; width:100%;">معاينة PDF</a>
+                        <div style="display: flex; gap: 8px; width: 100%;">
+                            <button type="button" class="sms-btn sms-btn-dark sms-btn-review-prep" data-id="<?php echo esc_attr($prep['id']); ?>" data-status="approved" style="height:32px; padding:0 10px; font-size:0.8rem; flex:1;">اعتماد</button>
+                            <button type="button" class="sms-btn sms-btn-danger sms-btn-review-prep" data-id="<?php echo esc_attr($prep['id']); ?>" data-status="rejected" style="height:32px; padding:0 10px; font-size:0.8rem; flex:1;">رفض</button>
+                        </div>
+                    </div>
+                </div>
+                <?php
+            }
+        }
+        $html = ob_get_clean();
+        wp_send_json_success(array('html' => $html));
+    }
+
+    public function import_users() {
+        check_ajax_referer('sms_nonce', 'security');
+
+        if (!current_user_can('manage_sms_users') && !SMS_Auth::is_admin_user()) {
+            wp_send_json_error(array('message' => 'غير مصرح'));
+        }
+
+        if (empty($_FILES['csv_file']['tmp_name'])) {
+            wp_send_json_error(array('message' => 'يرجى اختيار ملف CSV للمستخدمين'));
+        }
+
+        $res = SMS_Export_Import::import_users_csv($_FILES['csv_file']['tmp_name']);
+        if ($res['success']) {
+            $msg = "تم استيراد {$res['success_count']} مستخدم بنجاح.";
+            if ($res['error_count'] > 0) {
+                $msg .= " تعذر استيراد {$res['error_count']} سجل.";
+            }
+            wp_send_json_success(array('message' => $msg));
+        } else {
+            wp_send_json_error(array('message' => $res['message']));
+        }
     }
 
     public function filter_users() {
@@ -50,7 +172,9 @@ class SMS_AJAX {
             $args['search_columns'] = array('user_login', 'user_email', 'display_name');
         }
 
-        $users = get_users($args);
+        $viewer_id = get_current_user_id();
+        $users = SMS_Users::get_scoped_users($viewer_id, $args);
+
         $roles_config = SMS_Roles::get_roles_config();
         $institutions = SMS_Institutions::get_all();
 
@@ -75,6 +199,7 @@ class SMS_AJAX {
                 $role_label = !empty($user_roles) && isset($roles_config[$user_roles[0]]) ? $roles_config[$user_roles[0]]['name'] : 'مستخدم';
                 $validity = get_user_meta($u->ID, 'sms_membership_validity', true);
                 $mem_num = get_user_meta($u->ID, 'sms_membership_number', true);
+                $avatar_url = get_user_meta($u->ID, 'sms_avatar_url', true);
 
                 $u_inst_names = array();
                 foreach ($institutions as $inst) {
@@ -86,8 +211,12 @@ class SMS_AJAX {
                 ?>
                 <div class="sms-user-card">
                     <div class="sms-user-card-header">
-                        <div class="sms-user-card-avatar">
-                            <?php echo esc_html(mb_substr($u->display_name, 0, 1, 'UTF-8')); ?>
+                        <div class="sms-user-card-avatar" style="overflow:hidden;">
+                            <?php if ($avatar_url): ?>
+                                <img src="<?php echo esc_url($avatar_url); ?>" style="width:100%; height:100%; object-fit:cover;" />
+                            <?php else: ?>
+                                <?php echo esc_html(mb_substr($u->display_name, 0, 1, 'UTF-8')); ?>
+                            <?php endif; ?>
                         </div>
                         <div>
                             <strong style="font-size: 0.95rem; display: block;"><?php echo esc_html($u->display_name); ?></strong>
@@ -137,6 +266,20 @@ class SMS_AJAX {
 
         $user_id = get_current_user_id();
         $is_admin = SMS_Auth::is_admin_user();
+
+        // Profile Picture Avatar Upload Handler
+        if (!empty($_FILES['avatar_file']['tmp_name'])) {
+            $file = $_FILES['avatar_file'];
+            if ($file['size'] > 3 * 1024 * 1024) {
+                wp_send_json_error(array('message' => 'حجم الصورة يتجاوز الحد الأقصى المسموح (3 ميجابايت)'));
+            }
+
+            require_once(ABSPATH . 'wp-admin/includes/file.php');
+            $upload = wp_handle_upload($file, array('test_form' => false));
+            if ($upload && !isset($upload['error'])) {
+                update_user_meta($user_id, 'sms_avatar_url', esc_url_raw($upload['url']));
+            }
+        }
 
         $first_name = isset($_POST['first_name']) ? sanitize_text_field($_POST['first_name']) : '';
         $last_name  = isset($_POST['last_name']) ? sanitize_text_field($_POST['last_name']) : '';

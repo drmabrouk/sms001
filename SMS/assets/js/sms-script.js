@@ -45,26 +45,118 @@ jQuery(document).ready(function ($) {
     // Save Profile Form via AJAX
     $('#sms-profile-form').on('submit', function (e) {
         e.preventDefault();
-        var formData = $(this).serialize() + '&action=sms_save_profile&security=' + sms_vars.nonce;
+        var formData = new FormData(this);
+        formData.append('action', 'sms_save_profile');
+        formData.append('security', sms_vars.nonce);
 
-        $.post(sms_vars.ajax_url, formData, function (res) {
+        $.ajax({
+            url: sms_vars.ajax_url,
+            type: 'POST',
+            data: formData,
+            contentType: false,
+            processData: false,
+            success: function (res) {
+                if (res.success) {
+                    alert(res.data.message);
+                    location.reload();
+                } else {
+                    alert(res.data.message || 'حدث خطأ أثناء حفظ الملف الشخصي');
+                }
+            }
+        });
+    });
+
+    // Submit Lesson Preparation via AJAX
+    var $modalSubmitLesson = $('#sms-modal-submit-lesson');
+    $('#sms-btn-submit-lesson, #sms-btn-quick-submit').on('click', function () {
+        $('#sms-form-submit-lesson')[0].reset();
+        $modalSubmitLesson.addClass('open');
+    });
+
+    $('#sms-modal-submit-lesson-close').on('click', function () {
+        $modalSubmitLesson.removeClass('open');
+    });
+
+    $('#sms-form-submit-lesson').on('submit', function (e) {
+        e.preventDefault();
+        var formData = new FormData(this);
+        formData.append('action', 'sms_submit_lesson');
+        formData.append('security', sms_vars.nonce);
+
+        $.ajax({
+            url: sms_vars.ajax_url,
+            type: 'POST',
+            data: formData,
+            contentType: false,
+            processData: false,
+            success: function (res) {
+                if (res.success) {
+                    alert(res.data.message);
+                    location.reload();
+                } else {
+                    alert(res.data.message || 'حدث خطأ أثناء إرسال التحضير');
+                }
+            }
+        });
+    });
+
+    // Review Lesson Prep Approval/Rejection
+    $(document).on('click', '.sms-btn-review-prep', function () {
+        var prepId = $(this).data('id');
+        var status = $(this).data('status');
+
+        $.post(sms_vars.ajax_url, {
+            action: 'sms_review_prep',
+            security: sms_vars.nonce,
+            prep_id: prepId,
+            status: status
+        }, function (res) {
             if (res.success) {
                 alert(res.data.message);
                 location.reload();
             } else {
-                alert(res.data.message || 'حدث خطأ أثناء حفظ الملف الشخصي');
+                alert(res.data.message || 'حدث خطأ أثناء المراجعة');
             }
         });
+    });
+
+    // Dynamic Lesson Prep Filtering
+    var prepFilterTimeout;
+    function fetchFilteredPreps() {
+        var searchVal = $('#sms-prep-search-input').val();
+        var statusVal = $('#sms-prep-filter-status').val();
+        var instVal   = $('#sms-prep-filter-institution').val();
+
+        $.post(sms_vars.ajax_url, {
+            action: 'sms_filter_preps',
+            security: sms_vars.nonce,
+            search: searchVal,
+            status: statusVal,
+            institution: instVal
+        }, function (res) {
+            if (res.success) {
+                $('#sms-prep-cards-container').html(res.data.html);
+            }
+        });
+    }
+
+    $(document).on('input', '#sms-prep-search-input', function () {
+        clearTimeout(prepFilterTimeout);
+        prepFilterTimeout = setTimeout(fetchFilteredPreps, 300);
+    });
+
+    $(document).on('change', '#sms-prep-filter-status, #sms-prep-filter-institution', function () {
+        fetchFilteredPreps();
     });
 
     // Dynamic User Search, Filter and Sorting
     var userFilterTimeout;
     function fetchFilteredUsers() {
         var searchVal = $('#sms-user-search-input').val();
-        var roleVal = $('#sms-user-filter-role').val();
-        var instVal = $('#sms-user-filter-institution').val();
+        var roleVal   = $('#sms-user-filter-role').val();
+        var instVal   = $('#sms-user-filter-institution').val();
         var statusVal = $('#sms-user-filter-status').val();
-        var sortVal = $('#sms-user-sort-order').val();
+        var sortVal   = $('#sms-user-sort-order').val();
 
         $.post(sms_vars.ajax_url, {
             action: 'sms_filter_users',
@@ -131,6 +223,40 @@ jQuery(document).ready(function ($) {
                 location.reload();
             } else {
                 alert(res.data.message || 'حدث خطأ أثناء حفظ المستخدم');
+            }
+        });
+    });
+
+    // Bulk User CSV Import Modal Lifecycle
+    var $modalImportUsers = $('#sms-modal-import-users');
+    $('#sms-btn-import-users').on('click', function () {
+        $('#sms-form-import-users')[0].reset();
+        $modalImportUsers.addClass('open');
+    });
+
+    $('#sms-modal-import-users-close').on('click', function () {
+        $modalImportUsers.removeClass('open');
+    });
+
+    $('#sms-form-import-users').on('submit', function (e) {
+        e.preventDefault();
+        var formData = new FormData(this);
+        formData.append('action', 'sms_import_users');
+        formData.append('security', sms_vars.nonce);
+
+        $.ajax({
+            url: sms_vars.ajax_url,
+            type: 'POST',
+            data: formData,
+            contentType: false,
+            processData: false,
+            success: function (res) {
+                if (res.success) {
+                    alert(res.data.message);
+                    location.reload();
+                } else {
+                    alert(res.data.message || 'حدث خطأ أثناء الاستيراد الجماعي للمستخدمين');
+                }
             }
         });
     });

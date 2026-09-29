@@ -9,6 +9,7 @@ $roles = SMS_Roles::get_roles_config();
 $students_table = $wpdb->prefix . 'sms_students';
 
 $subtab = isset($_GET['subtab']) ? sanitize_text_field($_GET['subtab']) : 'users';
+$current_user_id = get_current_user_id();
 ?>
 <div class="sms-page-header">
     <h2 class="sms-page-title">إدارة مستخدمي النظام والطلاب</h2>
@@ -16,6 +17,7 @@ $subtab = isset($_GET['subtab']) ? sanitize_text_field($_GET['subtab']) : 'users
         <a href="?tab=users&subtab=users" class="sms-btn <?php echo $subtab === 'users' ? 'sms-btn-dark' : 'sms-btn-outline'; ?>">بطاقات مستخدمي النظام</a>
         <a href="?tab=users&subtab=students" class="sms-btn <?php echo $subtab === 'students' ? 'sms-btn-dark' : 'sms-btn-outline'; ?>">سجلات الطلاب</a>
         <?php if ($subtab === 'users'): ?>
+            <button type="button" class="sms-btn sms-btn-outline" id="sms-btn-import-users">استيراد جماعي CSV</button>
             <button type="button" class="sms-btn sms-btn-dark" id="sms-btn-add-user">+ إضافة مستخدم</button>
         <?php else: ?>
             <button type="button" class="sms-btn sms-btn-dark" id="sms-btn-add-student">+ إضافة طالب جديد</button>
@@ -71,68 +73,78 @@ $subtab = isset($_GET['subtab']) ? sanitize_text_field($_GET['subtab']) : 'users
 
     <!-- User Cards Grid Container -->
     <div id="sms-user-cards-container" class="sms-user-grid">
-        <!-- Rendered via AJAX or initial loop -->
         <?php
         $args = array(
             'orderby' => 'user_registered',
             'order'   => 'DESC',
         );
-        $all_users = get_users($args);
-        foreach ($all_users as $u):
-            $status = SMS_Auth::get_user_status($u->ID);
-            $badge_class = 'sms-badge-' . $status;
-            $status_label = ($status === 'active') ? 'نشط' : (($status === 'expired') ? 'منتهي الصلاحية' : 'غير نشط');
-            $user_roles = (array)$u->roles;
-            $role_label = !empty($user_roles) && isset($roles[$user_roles[0]]) ? $roles[$user_roles[0]]['name'] : 'مستخدم';
-            $validity = get_user_meta($u->ID, 'sms_membership_validity', true);
-            $mem_num = get_user_meta($u->ID, 'sms_membership_number', true);
-            $u_inst_ids = SMS_Users::get_user_institutions($u->ID);
-            $u_inst_names = array();
-            foreach ($institutions as $inst) {
-                if (in_array($inst['id'], $u_inst_ids)) {
-                    $u_inst_names[] = $inst['name'];
-                }
-            }
-            $inst_str = !empty($u_inst_names) ? implode('، ', $u_inst_names) : 'غير محدد';
-        ?>
-            <div class="sms-user-card">
-                <div class="sms-user-card-header">
-                    <div class="sms-user-card-avatar">
-                        <?php echo esc_html(mb_substr($u->display_name, 0, 1, 'UTF-8')); ?>
-                    </div>
-                    <div>
-                        <strong style="font-size: 0.95rem; display: block;"><?php echo esc_html($u->display_name); ?></strong>
-                        <span style="font-size: 0.8rem; color: var(--sms-text-muted);"><?php echo esc_html($u->user_login); ?></span>
-                    </div>
-                </div>
-
-                <div class="sms-user-card-body">
-                    <div><strong>الدور:</strong> <?php echo esc_html($role_label); ?></div>
-                    <div><strong>المؤسسة:</strong> <?php echo esc_html($inst_str); ?></div>
-                    <div><strong>البريد:</strong> <?php echo esc_html($u->user_email); ?></div>
-                </div>
-
-                <div class="sms-user-card-meta">
-                    <div>رقم العضوية: <strong><?php echo esc_html($mem_num ? $mem_num : '-'); ?></strong></div>
-                    <span class="sms-badge <?php echo esc_attr($badge_class); ?>"><?php echo esc_html($status_label); ?></span>
-                </div>
-
-                <div class="sms-user-card-actions">
-                    <button type="button" class="sms-btn sms-btn-outline sms-btn-edit-user"
-                        data-id="<?php echo esc_attr($u->ID); ?>"
-                        data-username="<?php echo esc_attr($u->user_login); ?>"
-                        data-email="<?php echo esc_attr($u->user_email); ?>"
-                        data-firstname="<?php echo esc_attr(get_user_meta($u->ID, 'first_name', true)); ?>"
-                        data-lastname="<?php echo esc_attr(get_user_meta($u->ID, 'last_name', true)); ?>"
-                        data-role="<?php echo esc_attr(!empty($user_roles) ? $user_roles[0] : ''); ?>"
-                        data-insts='<?php echo esc_attr(json_encode($u_inst_ids)); ?>'
-                        data-memnum="<?php echo esc_attr($mem_num); ?>"
-                        data-memval="<?php echo esc_attr($validity); ?>"
-                        style="height: 32px; padding: 0 10px; font-size: 0.8rem; flex: 1;">تعديل</button>
-                    <button type="button" class="sms-btn sms-btn-outline sms-btn-toggle-status" data-id="<?php echo esc_attr($u->ID); ?>" data-status="<?php echo esc_attr($status); ?>" style="height: 32px; padding: 0 10px; font-size: 0.8rem; flex: 1;">تغيير الحالة</button>
-                </div>
+        $all_users = SMS_Users::get_scoped_users($current_user_id, $args);
+        if (empty($all_users)): ?>
+            <div class="sms-card" style="grid-column: 1 / -1; text-align: center; color: var(--sms-text-muted);">
+                لا يوجد مستخدمون لعرضهم في نتاق الصلاحية المحدد.
             </div>
-        <?php endforeach; ?>
+        <?php else: ?>
+            <?php foreach ($all_users as $u):
+                $status = SMS_Auth::get_user_status($u->ID);
+                $badge_class = 'sms-badge-' . $status;
+                $status_label = ($status === 'active') ? 'نشط' : (($status === 'expired') ? 'منتهي الصلاحية' : 'غير نشط');
+                $user_roles = (array)$u->roles;
+                $role_label = !empty($user_roles) && isset($roles[$user_roles[0]]) ? $roles[$user_roles[0]]['name'] : 'مستخدم';
+                $validity = get_user_meta($u->ID, 'sms_membership_validity', true);
+                $mem_num = get_user_meta($u->ID, 'sms_membership_number', true);
+                $avatar_url = get_user_meta($u->ID, 'sms_avatar_url', true);
+                $u_inst_ids = SMS_Users::get_user_institutions($u->ID);
+                $u_inst_names = array();
+                foreach ($institutions as $inst) {
+                    if (in_array($inst['id'], $u_inst_ids)) {
+                        $u_inst_names[] = $inst['name'];
+                    }
+                }
+                $inst_str = !empty($u_inst_names) ? implode('، ', $u_inst_names) : 'غير محدد';
+            ?>
+                <div class="sms-user-card">
+                    <div class="sms-user-card-header">
+                        <div class="sms-user-card-avatar" style="overflow:hidden;">
+                            <?php if ($avatar_url): ?>
+                                <img src="<?php echo esc_url($avatar_url); ?>" style="width:100%; height:100%; object-fit:cover;" />
+                            <?php else: ?>
+                                <?php echo esc_html(mb_substr($u->display_name, 0, 1, 'UTF-8')); ?>
+                            <?php endif; ?>
+                        </div>
+                        <div>
+                            <strong style="font-size: 0.95rem; display: block;"><?php echo esc_html($u->display_name); ?></strong>
+                            <span style="font-size: 0.8rem; color: var(--sms-text-muted);"><?php echo esc_html($u->user_login); ?></span>
+                        </div>
+                    </div>
+
+                    <div class="sms-user-card-body">
+                        <div><strong>الدور:</strong> <?php echo esc_html($role_label); ?></div>
+                        <div><strong>المؤسسة:</strong> <?php echo esc_html($inst_str); ?></div>
+                        <div><strong>البريد:</strong> <?php echo esc_html($u->user_email); ?></div>
+                    </div>
+
+                    <div class="sms-user-card-meta">
+                        <div>رقم العضوية: <strong><?php echo esc_html($mem_num ? $mem_num : '-'); ?></strong></div>
+                        <span class="sms-badge <?php echo esc_attr($badge_class); ?>"><?php echo esc_html($status_label); ?></span>
+                    </div>
+
+                    <div class="sms-user-card-actions">
+                        <button type="button" class="sms-btn sms-btn-outline sms-btn-edit-user"
+                            data-id="<?php echo esc_attr($u->ID); ?>"
+                            data-username="<?php echo esc_attr($u->user_login); ?>"
+                            data-email="<?php echo esc_attr($u->user_email); ?>"
+                            data-firstname="<?php echo esc_attr(get_user_meta($u->ID, 'first_name', true)); ?>"
+                            data-lastname="<?php echo esc_attr(get_user_meta($u->ID, 'last_name', true)); ?>"
+                            data-role="<?php echo esc_attr(!empty($user_roles) ? $user_roles[0] : ''); ?>"
+                            data-insts='<?php echo esc_attr(json_encode($u_inst_ids)); ?>'
+                            data-memnum="<?php echo esc_attr($mem_num); ?>"
+                            data-memval="<?php echo esc_attr($validity); ?>"
+                            style="height: 32px; padding: 0 10px; font-size: 0.8rem; flex: 1;">تعديل</button>
+                        <button type="button" class="sms-btn sms-btn-outline sms-btn-toggle-status" data-id="<?php echo esc_attr($u->ID); ?>" data-status="<?php echo esc_attr($status); ?>" style="height: 32px; padding: 0 10px; font-size: 0.8rem; flex: 1;">تغيير الحالة</button>
+                    </div>
+                </div>
+            <?php endforeach; ?>
+        <?php endif; ?>
     </div>
 
     <!-- Add/Edit User Modal -->
@@ -197,10 +209,32 @@ $subtab = isset($_GET['subtab']) ? sanitize_text_field($_GET['subtab']) : 'users
                             <option value="<?php echo esc_attr($inst['id']); ?>"><?php echo esc_html($inst['name']); ?></option>
                         <?php endforeach; ?>
                     </select>
-                    <label for="usr_insts" style="top: 8px; transform: none; font-size: 0.72rem;">المؤسسات المرتبطة (Ctrl للاختيار المتعدد לרئيس القسم)</label>
+                    <label for="usr_insts" style="top: 8px; transform: none; font-size: 0.72rem;">المؤسسات المرتبطة (Ctrl للاختيار المتعدد لرئيس القسم)</label>
                 </div>
                 <div style="margin-top: 20px; text-align: left;">
                     <button type="submit" class="sms-btn sms-btn-dark">حفظ البيانات</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Bulk User CSV Import Modal -->
+    <div class="sms-modal-backdrop" id="sms-modal-import-users">
+        <div class="sms-modal">
+            <div class="sms-modal-header">
+                <h3 class="sms-modal-title">الاستيراد الجماعي للمستخدمين من ملف CSV</h3>
+                <button type="button" class="sms-modal-close" id="sms-modal-import-users-close">&times;</button>
+            </div>
+            <form id="sms-form-import-users" enctype="multipart/form-data">
+                <div class="sms-floating-field" style="margin-top: 10px;">
+                    <input type="file" id="csv_users_file" name="csv_file" accept=".csv" required style="padding-top:12px;" />
+                </div>
+                <p style="font-size:0.85rem; color:var(--sms-text-muted);">
+                    ترتيب أعمدة CSV المطلوب: (اسم المستخدم, البريد, الاسم الأول, اسم العائلة, مفتاح الدور, رقم العضوية, معرف المؤسسة).<br/>
+                    سيتم توليد كلمة المرور الافتراضية تلقائياً بتكرار رقم العضوية 3 مرات.
+                </p>
+                <div style="margin-top: 20px; text-align: left;">
+                    <button type="submit" class="sms-btn sms-btn-dark">رفع واستيراد المستخدمين</button>
                 </div>
             </form>
         </div>
