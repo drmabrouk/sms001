@@ -79,6 +79,56 @@ body.sms-standalone-page #page {
     position: relative;
 }
 
+/* Notification Badge in Sidebar / Mobile Header */
+.sms-notif-badge {
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    background-color: var(--sms-danger);
+    color: #ffffff;
+    font-size: 0.65rem;
+    font-weight: 800;
+    border-radius: 9999px;
+    padding: 2px 6px;
+    line-height: 1;
+}
+
+/* Slide-over Notification Drawer */
+.sms-notif-drawer-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.3);
+    display: none;
+    justify-content: flex-start;
+    z-index: 99999;
+}
+
+.sms-notif-drawer-backdrop.open {
+    display: flex;
+}
+
+.sms-notif-drawer {
+    width: 360px;
+    max-width: 85vw;
+    height: 100vh;
+    background: var(--sms-bg-card);
+    border-left: 1px solid var(--sms-border-color);
+    box-shadow: 5px 0 25px rgba(0,0,0,0.1);
+    display: flex;
+    flex-direction: column;
+}
+
+.sms-notif-drawer-header {
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--sms-border-color);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
 /* Fixed Global Right Sidebar Navigation */
 .sms-sidebar {
     position: fixed;

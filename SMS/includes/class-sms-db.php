@@ -18,7 +18,10 @@ class SMS_DB {
             address TEXT,
             phone VARCHAR(50) DEFAULT '',
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            PRIMARY KEY  (id)
+            PRIMARY KEY  (id),
+            KEY name (name),
+            KEY code (code),
+            KEY city (city)
         ) $charset_collate;";
 
         $table_students = $wpdb->prefix . 'sms_students';
@@ -44,7 +47,9 @@ class SMS_DB {
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             PRIMARY KEY  (id),
             KEY user_id (user_id),
-            KEY institution_id (institution_id)
+            KEY institution_id (institution_id),
+            KEY status (status),
+            KEY membership_number (membership_number)
         ) $charset_collate;";
 
         $table_user_institutions = $wpdb->prefix . 'sms_user_institutions';
@@ -54,7 +59,9 @@ class SMS_DB {
             institution_id BIGINT(20) UNSIGNED NOT NULL,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             PRIMARY KEY  (id),
-            UNIQUE KEY user_inst (user_id, institution_id)
+            UNIQUE KEY user_inst (user_id, institution_id),
+            KEY user_id (user_id),
+            KEY institution_id (institution_id)
         ) $charset_collate;";
 
         $table_lessons = $wpdb->prefix . 'sms_lesson_preparations';
@@ -74,7 +81,26 @@ class SMS_DB {
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             PRIMARY KEY  (id),
             KEY teacher_id (teacher_id),
-            KEY institution_id (institution_id)
+            KEY institution_id (institution_id),
+            KEY is_late (is_late),
+            KEY review_status (review_status),
+            KEY submission_time (submission_time)
+        ) $charset_collate;";
+
+        $table_notifications = $wpdb->prefix . 'sms_notifications';
+        $sql_notifications = "CREATE TABLE IF NOT EXISTS $table_notifications (
+            id BIGINT(20) UNSIGNED NOT NULL AUTO_INCREMENT,
+            user_id BIGINT(20) UNSIGNED NOT NULL,
+            type VARCHAR(100) NOT NULL,
+            title VARCHAR(255) NOT NULL,
+            message TEXT,
+            link VARCHAR(255) DEFAULT '',
+            priority VARCHAR(50) DEFAULT 'normal',
+            is_read TINYINT(1) DEFAULT 0,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY  (id),
+            KEY user_read (user_id, is_read),
+            KEY created_at (created_at)
         ) $charset_collate;";
 
         require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
@@ -82,5 +108,6 @@ class SMS_DB {
         dbDelta($sql_students);
         dbDelta($sql_user_institutions);
         dbDelta($sql_lessons);
+        dbDelta($sql_notifications);
     }
 }

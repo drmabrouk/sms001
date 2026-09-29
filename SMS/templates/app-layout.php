@@ -10,6 +10,7 @@ $roles = (array) $current_user->roles;
 $role_names = SMS_Roles::get_roles_config();
 $primary_role_key = !empty($roles) ? $roles[0] : '';
 $primary_role_label = isset($role_names[$primary_role_key]) ? $role_names[$primary_role_key]['name'] : 'مستخدم';
+$unread_count = SMS_Notifications::get_unread_count($current_user->ID);
 ?>
 <div class="sms-app-wrapper">
     <!-- Mobile Top Header Bar -->
@@ -20,19 +21,31 @@ $primary_role_label = isset($role_names[$primary_role_key]) ? $role_names[$prima
             </div>
             <strong style="font-size: 0.95rem;">نظام إدارة الرياضة</strong>
         </div>
-        <button type="button" class="sms-btn sms-btn-outline" id="sms-mobile-toggle-btn" style="height:36px; padding:0 12px; font-size:0.8rem;">
-            القائمة ☰
-        </button>
+        <div style="display:flex; gap:8px; align-items:center;">
+            <button type="button" class="sms-btn sms-btn-outline sms-notif-bell-btn" style="height:36px; padding:0 10px; position:relative;">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+                <span class="sms-notif-badge" style="<?php echo $unread_count > 0 ? '' : 'display:none;'; ?>"><?php echo esc_html($unread_count); ?></span>
+            </button>
+            <button type="button" class="sms-btn sms-btn-outline" id="sms-mobile-toggle-btn" style="height:36px; padding:0 12px; font-size:0.8rem;">
+                القائمة ☰
+            </button>
+        </div>
     </div>
 
     <!-- Fixed Right Sidebar Navigation -->
     <aside class="sms-sidebar" id="sms-global-sidebar">
         <div>
-            <div class="sms-sidebar-brand">
-                <div class="sms-brand-icon">
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg>
+            <div class="sms-sidebar-brand" style="justify-content: space-between;">
+                <div style="display:flex; align-items:center; gap:12px;">
+                    <div class="sms-brand-icon">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg>
+                    </div>
+                    <h1 class="sms-brand-title">نظام إدارة الرياضة</h1>
                 </div>
-                <h1 class="sms-brand-title">نظام إدارة الرياضة</h1>
+                <button type="button" class="sms-logout-btn sms-notif-bell-btn" title="الإشعارات" style="position:relative;">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+                    <span class="sms-notif-badge" style="<?php echo $unread_count > 0 ? '' : 'display:none;'; ?>"><?php echo esc_html($unread_count); ?></span>
+                </button>
             </div>
 
             <nav class="sms-sidebar-nav">
@@ -100,12 +113,30 @@ $primary_role_label = isset($role_names[$primary_role_key]) ? $role_names[$prima
         </div>
     </aside>
 
+    <!-- Slide-over Notification Drawer -->
+    <div class="sms-notif-drawer-backdrop" id="sms-notif-drawer-backdrop">
+        <div class="sms-notif-drawer">
+            <div class="sms-notif-drawer-header">
+                <h3 style="margin:0; font-size:1.1rem; font-weight:800;">مركز الإشعارات</h3>
+                <div style="display:flex; gap:10px; align-items:center;">
+                    <button type="button" id="sms-btn-mark-all-read" style="background:none; border:none; color:var(--sms-text-secondary); font-size:0.8rem; cursor:pointer; font-weight:700;">تحديد الكل كمقروء</button>
+                    <button type="button" id="sms-notif-drawer-close" style="background:none; border:none; font-size:1.4rem; cursor:pointer; color:var(--sms-text-muted);">&times;</button>
+                </div>
+            </div>
+            <div id="sms-notif-list-container" style="overflow-y:auto; flex:1;">
+                <!-- Populated via AJAX -->
+            </div>
+        </div>
+    </div>
+
     <!-- Open Main Content Area -->
     <main class="sms-main-content">
         <?php
         switch ($current_tab) {
             case 'reports':
             case 'lessons':
+                include SMS_PLUGIN_DIR . 'templates/parts/tab-lessons.php';
+                break;
             case 'plans':
                 include SMS_PLUGIN_DIR . 'templates/parts/tab-placeholder.php';
                 break;

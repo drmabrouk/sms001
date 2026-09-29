@@ -6,6 +6,80 @@ jQuery(document).ready(function ($) {
         $('#sms-global-sidebar').toggleClass('open');
     });
 
+    // Notification Center Drawer Toggle & Fetching
+    var $notifDrawer = $('#sms-notif-drawer-backdrop');
+    function refreshNotifications() {
+        $.post(sms_vars.ajax_url, {
+            action: 'sms_fetch_notifications',
+            security: sms_vars.nonce
+        }, function (res) {
+            if (res.success) {
+                $('.sms-notif-badge').text(res.data.count);
+                if (res.data.count > 0) {
+                    $('.sms-notif-badge').show();
+                } else {
+                    $('.sms-notif-badge').hide();
+                }
+                $('#sms-notif-list-container').html(res.data.html);
+            }
+        });
+    }
+
+    // Toggle Notification Drawer
+    $(document).on('click', '.sms-notif-bell-btn', function () {
+        refreshNotifications();
+        $notifDrawer.addClass('open');
+    });
+
+    $('#sms-notif-drawer-close').on('click', function () {
+        $notifDrawer.removeClass('open');
+    });
+
+    // Mark Single Notification as Read
+    $(document).on('click', '.sms-btn-mark-read', function () {
+        var notifId = $(this).data('id');
+        $.post(sms_vars.ajax_url, {
+            action: 'sms_mark_read_notification',
+            security: sms_vars.nonce,
+            id: notifId
+        }, function (res) {
+            if (res.success) {
+                refreshNotifications();
+            }
+        });
+    });
+
+    // Mark All Notifications as Read
+    $('#sms-btn-mark-all-read').on('click', function () {
+        $.post(sms_vars.ajax_url, {
+            action: 'sms_mark_all_read_notifications',
+            security: sms_vars.nonce
+        }, function (res) {
+            if (res.success) {
+                refreshNotifications();
+            }
+        });
+    });
+
+    // 60-second Lightweight Notification Unread Count Sync
+    setInterval(function () {
+        if (document.visibilityState === 'visible') {
+            $.post(sms_vars.ajax_url, {
+                action: 'sms_fetch_notifications',
+                security: sms_vars.nonce
+            }, function (res) {
+                if (res.success) {
+                    $('.sms-notif-badge').text(res.data.count);
+                    if (res.data.count > 0) {
+                        $('.sms-notif-badge').show();
+                    } else {
+                        $('.sms-notif-badge').hide();
+                    }
+                }
+            });
+        }
+    }, 60000);
+
     // Password Visibility Toggle Eyeball
     $(document).on('click', '.sms-password-toggle-btn', function (e) {
         e.preventDefault();

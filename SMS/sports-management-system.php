@@ -28,12 +28,19 @@ require_once SMS_PLUGIN_DIR . 'includes/class-sms-institutions.php';
 require_once SMS_PLUGIN_DIR . 'includes/class-sms-users.php';
 require_once SMS_PLUGIN_DIR . 'includes/class-sms-students.php';
 require_once SMS_PLUGIN_DIR . 'includes/class-sms-lessons.php';
+require_once SMS_PLUGIN_DIR . 'includes/class-sms-notifications.php';
 require_once SMS_PLUGIN_DIR . 'includes/class-sms-ajax.php';
 require_once SMS_PLUGIN_DIR . 'includes/class-sms-export-import.php';
 require_once SMS_PLUGIN_DIR . 'includes/class-sms-core.php';
 
 register_activation_hook(__FILE__, array('SMS_Activator', 'activate'));
 register_deactivation_hook(__FILE__, array('SMS_Deactivator', 'deactivate'));
+
+// Register Daily Cron Cleanup for 7-Day Notification Expiration
+if (!wp_next_scheduled('sms_daily_notification_cleanup')) {
+    wp_schedule_event(time(), 'daily', 'sms_daily_notification_cleanup');
+}
+add_action('sms_daily_notification_cleanup', array('SMS_Notifications', 'purge_expired_notifications'));
 
 function run_sports_management_system() {
     $plugin = new SMS_Core();

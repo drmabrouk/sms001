@@ -17,6 +17,80 @@ class SMS_AJAX {
         add_action('wp_ajax_sms_submit_lesson', array($this, 'submit_lesson'));
         add_action('wp_ajax_sms_review_prep', array($this, 'review_prep'));
         add_action('wp_ajax_sms_filter_preps', array($this, 'filter_preps'));
+        add_action('wp_ajax_sms_fetch_notifications', array($this, 'fetch_notifications'));
+        add_action('wp_ajax_sms_mark_read_notification', array($this, 'mark_read_notification'));
+        add_action('wp_ajax_sms_mark_all_read_notifications', array($this, 'mark_all_read_notifications'));
+    }
+
+    public function fetch_notifications() {
+        check_ajax_referer('sms_nonce', 'security');
+
+        if (!is_user_logged_in()) {
+            wp_send_json_error(array('message' => 'غير مصرح'));
+        }
+
+        $user_id = get_current_user_id();
+        $unread_count = SMS_Notifications::get_unread_count($user_id);
+        $notifications = SMS_Notifications::get_user_notifications($user_id);
+
+        ob_start();
+        if (empty($notifications)) {
+            echo '<div style="padding: 24px; text-align: center; color: var(--sms-text-muted); font-size: 0.85rem;">لا توجد إشعارات حالياً.</div>';
+        } else {
+            foreach ($notifications as $n) {
+                $priority_class = ($n['priority'] === 'action_required') ? 'sms-badge-expired' : (($n['priority'] === 'important') ? 'sms-badge-inactive' : 'sms-badge-info');
+                $unread_style   = !$n['is_read'] ? 'background: #f8fafc; font-weight: 700;' : '';
+                ?>
+                <div class="sms-notification-item" data-id="<?php echo esc_attr($n['id']); ?>" style="padding: 12px 16px; border-bottom: 1px solid var(--sms-border-color); display: flex; flex-direction: column; gap: 4px; <?php echo esc_attr($unread_style); ?>">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span class="sms-badge <?php echo esc_attr($priority_class); ?>"><?php echo esc_html($n['type']); ?></span>
+                        <span style="font-size: 0.72rem; color: var(--sms-text-muted);"><?php echo esc_html(human_time_diff(strtotime($n['created_at']), current_time('timestamp'))); ?></span>
+                    </div>
+                    <div style="font-size: 0.88rem; color: var(--sms-text-primary);"><?php echo esc_html($n['title']); ?></div>
+                    <?php if (!empty($n['message'])): ?>
+                        <div style="font-size: 0.8rem; color: var(--sms-text-secondary);"><?php echo esc_html($n['message']); ?></div>
+                    <?php endif; ?>
+                    <?php if (!$n['is_read']): ?>
+                        <div style="text-align: left; margin-top: 4px;">
+                            <button type="button" class="sms-btn-mark-read" data-id="<?php echo esc_attr($n['id']); ?>" style="background:none; border:none; color: var(--sms-text-muted); font-size: 0.75rem; cursor: pointer; text-decoration: underline;">تحديد كتمت القراءة</button>
+                        </div>
+                    <?php endif; ?>
+                </div>
+                <?php
+            }
+        }
+        $html = ob_get_clean();
+
+        wp_send_json_success(array(
+            'count' => $unread_count,
+            'html'  => $html
+        ));
+    }
+
+    public function mark_read_notification() {
+        check_ajax_referer('sms_nonce', 'security');
+
+        if (!is_user_logged_in()) {
+            wp_send_json_error(array('message' => 'غير مصرح'));
+        }
+
+        $id = isset($_POST['id']) ? intval($_POST['id']) : 0;
+        $user_id = get_current_user_id();
+
+        SMS_Notifications::mark_as_read($id, $user_id);
+        wp_send_json_success(array('message' => 'تم تحديث الإشعار'));
+    }
+
+    public function mark_all_read_notifications() {
+        check_ajax_referer('sms_nonce', 'security');
+
+        if (!is_user_logged_in()) {
+            wp_send_json_error(array('message' => 'غير مصرح'));
+        }
+
+        $user_id = get_current_user_id();
+        SMS_Notifications::mark_all_as_read($user_id);
+        wp_send_json_success(array('message' => 'تم تحديد جميع الإشعارات كمقروءة'));
     }
 
     public function submit_lesson() {
@@ -36,6 +110,13 @@ class SMS_AJAX {
             wp_send_json_error(array('message' => $result->get_error_message()));
         }
 
+        $teacher = get_userdata($user_id);
+        $t_name  = $teacher ? $teacher->display_name : 'المعلم';
+        $inst_id = SMS_Users::get_user_institutions($user_id)[0] ?? 0;
+
+        // Trigger Notification to Reviewers
+        SMS_Notifications::notify_roles(array('sms_coordinator', 'sms_dept_head', 'sms_administrator', 'administrator'), 'تحضير درس', "تقديم تحضير درس جديد من $t_name", "درس: $lesson_title", '?tab=lessons', 'important', $inst_id);
+
         wp_send_json_success(array('message' => 'تم إرسال تحضير الدرس بنجاح'));
     }
 
@@ -51,6 +132,16 @@ class SMS_AJAX {
         $user_id  = get_current_user_id();
 
         SMS_Lessons::review_prep($prep_id, $user_id, $status);
+
+        global $wpdb;
+        $table = $wpdb->prefix . 'sms_lesson_preparations';
+        $prep = $wpdb->get_row($wpdb->prepare("SELECT * FROM $table WHERE id = %d", $prep_id), ARRAY_A);
+
+        if ($prep) {
+            $status_ar = ($status === 'approved') ? 'اعتماد' : 'رفض';
+            SMS_Notifications::create_notification($prep['teacher_id'], 'مراجعة التحضير', "تم $status_ar تحضير الدرس الخاص بك: {$prep['lesson_title']}", '', '?tab=lessons', 'important');
+        }
+
         wp_send_json_success(array('message' => 'تم تحديث حالة اعتماد التحضير بنجاح'));
     }
 
@@ -394,6 +485,9 @@ class SMS_AJAX {
         }
 
         SMS_Users::update_user_institutions($user_id, $inst_ids);
+
+        // Notify Admins
+        SMS_Notifications::notify_roles(array('administrator', 'sms_administrator', 'sms_general_manager'), 'مستخدم جديد', "تم إنشاء حساب جديد: $username", "الدور: $role", '?tab=users');
 
         wp_send_json_success(array('message' => 'تم حفظ المستخدم بنجاح'));
     }

@@ -26,6 +26,10 @@ class MockWPDB {
         return array();
     }
 
+    public function get_row($query, $output = 'OBJECT') {
+        return false;
+    }
+
     public function get_col($query) {
         return array();
     }
@@ -44,6 +48,10 @@ class MockWPDB {
     }
 
     public function delete($table, $where, $where_format = null) {
+        return 1;
+    }
+
+    public function query($query) {
         return 1;
     }
 
@@ -246,6 +254,7 @@ require_once __DIR__ . '/../includes/class-sms-users.php';
 require_once __DIR__ . '/../includes/class-sms-students.php';
 require_once __DIR__ . '/../includes/class-sms-institutions.php';
 require_once __DIR__ . '/../includes/class-sms-lessons.php';
+require_once __DIR__ . '/../includes/class-sms-notifications.php';
 require_once __DIR__ . '/../includes/class-sms-export-import.php';
 
 // Test Runner
@@ -309,7 +318,14 @@ foreach ($scoped_users as $su) {
 }
 assert_test($admin_found === false, 'System Administrator must be excluded from user management visibility');
 
-// 5. Test Two-Way User Deletion Hook
+// 5. Test Notification Creation and 7-Day Purge Query
+$notif_res = SMS_Notifications::create_notification(1, 'اختبار', 'إشعار تجريبي', 'تفاصيل الإشعار');
+assert_test($notif_res === 1, 'Should log new user notification');
+
+$purge_res = SMS_Notifications::purge_expired_notifications();
+assert_test($purge_res === 1, 'Should execute 7-day notification purge SQL query successfully');
+
+// 6. Test Two-Way User Deletion Hook
 $sms_users_class = new SMS_Users();
 do_action('delete_user', 1);
 assert_test(true, 'WP user deletion cleanup hook executed successfully');
