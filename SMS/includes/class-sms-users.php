@@ -4,6 +4,10 @@ if (!defined('ABSPATH')) {
 }
 
 class SMS_Users {
+    public function __construct() {
+        add_action('delete_user', array($this, 'on_wp_delete_user'));
+    }
+
     public static function get_arab_countries() {
         return array(
             'الإمارات العربية المتحدة',
@@ -64,5 +68,26 @@ class SMS_Users {
                 ), array('%d', '%d'));
             }
         }
+    }
+
+    public function on_wp_delete_user($user_id) {
+        global $wpdb;
+
+        // Clean up institution mapping
+        $table_inst = $wpdb->prefix . 'sms_user_institutions';
+        $wpdb->delete($table_inst, array('user_id' => $user_id), array('%d'));
+
+        // Disassociate student record if linked
+        $table_students = $wpdb->prefix . 'sms_students';
+        $wpdb->update($table_students, array('user_id' => 0, 'is_active_account' => 0), array('user_id' => $user_id), array('%d', '%d'), array('%d'));
+    }
+
+    public static function delete_sms_user($user_id) {
+        if (!SMS_Auth::is_admin_user() && !current_user_can('manage_sms_users')) {
+            return false;
+        }
+
+        require_once(ABSPATH . 'wp-admin/includes/user.php');
+        return wp_delete_user($user_id);
     }
 }

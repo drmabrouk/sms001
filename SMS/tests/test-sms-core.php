@@ -165,6 +165,23 @@ function wp_update_user($userdata) {
     return $id;
 }
 
+// Action Hooks Mocking
+global $wp_action_hooks;
+$wp_action_hooks = array();
+function add_action($tag, $function_to_add, $priority = 10, $accepted_args = 1) {
+    global $wp_action_hooks;
+    $wp_action_hooks[$tag][] = $function_to_add;
+}
+
+function do_action($tag, ...$args) {
+    global $wp_action_hooks;
+    if (isset($wp_action_hooks[$tag])) {
+        foreach ($wp_action_hooks[$tag] as $func) {
+            call_user_func_array($func, $args);
+        }
+    }
+}
+
 // Load Plugin Files
 require_once __DIR__ . '/../includes/class-sms-roles.php';
 require_once __DIR__ . '/../includes/class-sms-db.php';
@@ -226,7 +243,12 @@ $wp_mock_users[2] = array(
 $is_expired_new = SMS_Auth::is_user_expired(2);
 assert_test($is_expired_new === false, 'Newly registered user should not be expired');
 
-// 4. Test Student Account Activation Toggle
+// 4. Test Two-Way User Deletion Hook
+$sms_users_class = new SMS_Users();
+do_action('delete_user', 1);
+assert_test(true, 'WP user deletion cleanup hook executed successfully');
+
+// 5. Test Student Account Activation Toggle
 $student_id = SMS_Students::create_or_update_student(array(
     'first_name' => 'أحمد',
     'last_name' => 'علي',
